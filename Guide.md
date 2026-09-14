@@ -290,3 +290,7 @@ The completed commits and their hashes are recorded in the `Git commits ที�
 ### Five-epoch run review — 2026-09-14
 
 The first `exp20` directory is not suitable for final evidence: `results.csv` contains epoch 0 twice, showing that `--exist-ok` mixed multiple executions in one directory. Its losses are finite and all required TensorBoard tags are present, but the metrics peak early and then decline, so the run has not converged. Use the updated Step 6 command with the unused name `exp20_clean` and without `--exist-ok`.
+
+### Clean run convergence review — 2026-09-14
+
+`exp20_clean` contains one event file and exactly five CSV rows for epochs 0–4. The loss is not expected to decrease smoothly: the run has only 35 iterations, while YOLOv5 enforces at least 100 warmup iterations, so the entire run remains in warmup. In addition, the custom `train/total_loss` currently plots the within-epoch running mean (`mloss`) at every global step; that mean resets each epoch and can create visible discontinuities. Epoch losses fluctuate and metrics decline after an early peak, so the supported conclusion is that the network has **not converged within five epochs**.

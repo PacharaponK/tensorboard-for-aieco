@@ -110,6 +110,16 @@ callbacks.run(
 - ข้อมูลมีเพียง 14 training images และทดสอบเพียง 5 epochs จึงรายงานได้เฉพาะว่า run ยังไม่ converge ห้ามสรุปความสามารถในการ generalize
 - การแก้ไข: รันใหม่ด้วยชื่อ `exp20_clean` และไม่ใช้ `--exist-ok` เพื่อให้ event file, CSV และ weights แยกจากทุก run ก่อนหน้า
 
+### 2026-09-14 — วิเคราะห์กราฟ loss ของ `exp20_clean`
+
+- ยืนยันว่า run สะอาด: `results.csv` มี epoch 0–4 อย่างละหนึ่งแถว และมี TensorBoard event file เพียงหนึ่งไฟล์
+- loss โดยหลักควรมีแนวโน้มลดลงเมื่อ optimization ดำเนินไปเพียงพอ แต่ไม่จำเป็นต้องลดทุก batch หรือทุก epoch
+- run นี้มีเพียง 14 training images × 5 epochs = 35 iterations ขณะที่ `train.py` กำหนด warmup ขั้นต่ำด้วย `nw = max(round(hyp["warmup_epochs"] * nb), 100)` จึงทำให้ทั้ง 35 iterations ยังอยู่ภายใน warmup 100 iterations
+- learning rate ยังเปลี่ยนตลอด run และโมเดลยังไม่เข้าสู่ช่วง optimization หลัง warmup จึงไม่ควรคาดหวังเส้น loss ลู่ลงอย่างชัดเจนจากรอบ 5 epochs นี้
+- `train/total_loss` ปัจจุบันคำนวณจาก `sum(mloss)` โดย `mloss` เป็นค่าเฉลี่ยสะสมภายใน epoch และถูกรีเซ็ตเมื่อต้น epoch รูปร่างระดับ iteration จึงอาจเกิดรอยต่อหรือแกว่งเมื่อเปลี่ยน epoch และไม่ใช่ raw per-batch loss
+- ค่า epoch-level ยืนยันว่า `box_loss` แกว่ง, `obj_loss` เพิ่ม และ metrics สูงสุดช่วง epoch 1–2 ก่อนลดลง ดังนั้นข้อสรุปสำหรับรายงานคือ network **ยังไม่ converge** ภายใน 5 epochs
+- ผลนี้ไม่ใช่ runtime error และใช้ตอบคำถามเรื่อง convergence ได้ตามขอบเขตของ Guide แต่หากต้องการกราฟ total loss แบบ raw per-batch ที่ตีความตรงกว่าเดิม ต้องเปลี่ยน logger ให้รับ `loss_items` ของ batch ปัจจุบันแทน `mloss`
+
 ## นโยบายการบันทึก
 
 ตั้งแต่ 2026-09-14 เป็นต้นไป การเปลี่ยนแปลงโค้ด ผลการทดลอง การตัดสินใจ และการทำงานสำคัญของงานนี้ต้องบันทึกใน `REPORT.md` พร้อมอัปเดตสถานะที่เกี่ยวข้องใน `Guide.md`
