@@ -100,6 +100,16 @@ callbacks.run(
 - ตรวจ event file ด้วย TensorBoard event accumulator: พบ `train/total_loss` จำนวน 7 steps และ `train/learning_rate` จำนวน 7 steps
 - training/validation tags เดิมยังอยู่ครบ ได้แก่ train losses, validation losses, precision, recall, mAP50, mAP50-95 และ learning-rate groups เดิม
 
+### 2026-09-14 — ตรวจผล train 5 epochs (`exp20`)
+
+- TensorBoard แสดง metrics ครบ 5 กลุ่มในหมวด train รวมทั้ง `train/total_loss` และ `train/learning_rate`; total loss และ learning rate มี step ระดับ iteration ตามที่กำหนด
+- เส้นสีอ่อนใน TensorBoard คือค่าดิบ และเส้นสีเข้มคือค่าหลัง smoothing; แกน Y ถูกปรับช่วงแคบอัตโนมัติ จึงทำให้ความผันผวนดูรุนแรงกว่าค่าจริง
+- ตรวจ `yolov5/runs/f09_box/exp20/results.csv` พบ epoch `0` ซ้ำสองแถว จึงสรุปว่าโฟลเดอร์ `exp20` มีผลจากมากกว่าหนึ่ง run ปะปนกัน เนื่องจากใช้ `--exist-ok`
+- run นี้มี `best.pt` และ `last.pt` แต่ไม่ควรใช้กราฟเป็นหลักฐานสุดท้าย เพราะ event และ CSV ปะปนกับการรันก่อนหน้า
+- แนวโน้มค่าจริงยังไม่ converge: `train/obj_loss` เพิ่มจาก `0.063952` เป็น `0.071624`; mAP50 สูงสุด `0.0056994` ที่ epoch 2 แล้วลดเป็น `0.0025514`; mAP50-95 ลดจาก `0.0018802` เป็น `0.00079441`
+- ข้อมูลมีเพียง 14 training images และทดสอบเพียง 5 epochs จึงรายงานได้เฉพาะว่า run ยังไม่ converge ห้ามสรุปความสามารถในการ generalize
+- การแก้ไข: รันใหม่ด้วยชื่อ `exp20_clean` และไม่ใช้ `--exist-ok` เพื่อให้ event file, CSV และ weights แยกจากทุก run ก่อนหน้า
+
 ## นโยบายการบันทึก
 
 ตั้งแต่ 2026-09-14 เป็นต้นไป การเปลี่ยนแปลงโค้ด ผลการทดลอง การตัดสินใจ และการทำงานสำคัญของงานนี้ต้องบันทึกใน `REPORT.md` พร้อมอัปเดตสถานะที่เกี่ยวข้องใน `Guide.md`

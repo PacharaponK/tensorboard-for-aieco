@@ -189,7 +189,7 @@ train/learning_rate
 ใช้ `batch-size=2` และ 5 epochs เป็นค่าเริ่มต้น เพราะ 14 train images จะได้ประมาณ 7 iterations ต่อ epoch รวมประมาณ 35 iterations ซึ่งผ่านเงื่อนไขอย่างน้อย 30 iterations
 
 ```powershell
-python train.py --img 640 --batch-size 2 --epochs 5 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name exp20 --exist-ok
+python train.py --img 640 --batch-size 2 --epochs 5 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name exp20_clean
 ```
 
 หาก GPU memory ไม่พอ ให้ลด batch size และเพิ่ม epochs จนจำนวน iterations รวมยังไม่น้อยกว่า 30 อย่าเปลี่ยนหลาย hyperparameters พร้อมกัน
@@ -286,3 +286,7 @@ Detailed file-by-file changes, before/after behavior, rationale, and verificatio
 Generated Python caches, YOLO run outputs, TensorBoard events, downloaded model weights, and dataset index caches are excluded through the repository `.gitignore`. The implementation and documentation are committed separately; see `แผนการแบ่ง Git commits` in `REPORT.md`.
 
 The completed commits and their hashes are recorded in the `Git commits ที่สร้างแล้ว` section of `REPORT.md`.
+
+### Five-epoch run review — 2026-09-14
+
+The first `exp20` directory is not suitable for final evidence: `results.csv` contains epoch 0 twice, showing that `--exist-ok` mixed multiple executions in one directory. Its losses are finite and all required TensorBoard tags are present, but the metrics peak early and then decline, so the run has not converged. Use the updated Step 6 command with the unused name `exp20_clean` and without `--exist-ok`.
