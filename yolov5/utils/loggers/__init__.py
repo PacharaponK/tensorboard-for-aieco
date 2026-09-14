@@ -169,9 +169,12 @@ class Loggers:
                 for path in paths:
                     self.clearml.log_plot(title=path.stem, plot_path=path)
 
-    def on_train_batch_end(self, model, ni, imgs, targets, paths, vals):
+    def on_train_batch_end(self, model, ni, imgs, targets, paths, vals, learning_rate):
         """Logs training batch end events, plots images, and updates external loggers with batch-end data."""
         log_dict = dict(zip(self.keys[:3], vals))
+        if self.tb:
+            self.tb.add_scalar("train/total_loss", sum(vals), ni)
+            self.tb.add_scalar("train/learning_rate", learning_rate, ni)
         # Callback runs on train batch end
         # ni: number integrated batches (since train start)
         if self.plots:
