@@ -148,6 +148,27 @@ python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box
 - ยังไม่ควรเรียกว่า converge สมบูรณ์ เพราะ objectness loss และ recall ผันผวน, curves ยังไม่ plateau อย่างนิ่ง และ validation set มีเพียง 3 ภาพ
 - กราฟ `train/total_loss` ระดับ iteration ยังคงแกว่งจาก batch composition และการใช้ within-epoch running mean; ใช้ epoch-level component losses และ validation metrics เป็นหลักในการสรุป
 
+### 2026-09-14 — แนวทางปรับ parameters
+
+- การปรับ parameters อาจเพิ่ม metrics ได้ แต่ไม่รับประกันผล และ validation เพียง 3 ภาพทำให้ค่าผันผวนสูงมาก
+- ให้เก็บ `exp30_epoch` เป็น baseline แล้วทดลองเปลี่ยนครั้งละหนึ่งตัวแปร ภายใต้ split และ seed เดิม เพื่อให้เปรียบเทียบได้
+- ลำดับที่แนะนำสำหรับชุดข้อมูลขนาดเล็ก: (1) เพิ่มจำนวนภาพและความหลากหลายของ annotations, (2) ทดลองเพิ่ม epochs พร้อมติดตาม validation, (3) ทดลอง freeze pretrained backbone, และ (4) จึงค่อยทดลอง learning rate/optimizer
+- การทดลองที่มีความเสี่ยงต่ำคือ 50 epochs ด้วยค่าที่เหลือเหมือน baseline และชื่อ run ใหม่; หาก train loss ลดแต่ validation metrics แย่ลงให้หยุดและรายงาน overfitting
+- อีกการทดลองหนึ่งคือ 30 epochs พร้อม `--freeze 10` เพื่อ train ส่วน detection head เป็นหลัก ลดจำนวน parameters ที่ต้องเรียนรู้จากข้อมูลเพียง 14 ภาพ
+- เปลี่ยนทีละตัวแปร: ห้ามเปลี่ยน epochs, optimizer, learning rate, augmentation และ freeze พร้อมกัน เพราะจะระบุไม่ได้ว่าผลต่างเกิดจากอะไร
+- ใช้ validation split เปรียบเทียบการทดลองเท่านั้น และเก็บ test split 3 ภาพไว้ประเมินโมเดลที่เลือกแล้ว ห้ามใช้ test metrics เลือก parameters
+- metrics ที่สูงขึ้นบน validation 3 ภาพยังไม่เพียงพอสำหรับสรุป generalization; วิธีปรับปรุงที่น่าเชื่อถือที่สุดคือเพิ่มข้อมูล train/validation
+
+ตัวอย่าง controlled experiments:
+
+```powershell
+# เปลี่ยนเฉพาะจำนวน epochs
+python train.py --img 640 --batch-size 2 --epochs 50 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name exp50_epoch
+
+# เปลี่ยนเฉพาะการ freeze backbone โดยเทียบที่ 30 epochs
+python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --freeze 10 --project runs\f09_box --name exp30_freeze10
+```
+
 ## นโยบายการบันทึก
 
 ตั้งแต่ 2026-09-14 เป็นต้นไป การเปลี่ยนแปลงโค้ด ผลการทดลอง การตัดสินใจ และการทำงานสำคัญของงานนี้ต้องบันทึกใน `REPORT.md` พร้อมอัปเดตสถานะที่เกี่ยวข้องใน `Guide.md`

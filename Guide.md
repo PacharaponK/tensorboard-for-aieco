@@ -306,3 +306,7 @@ Do not use `--exist-ok`. Judge the result from epoch-level train and validation 
 ### 30-epoch result — 2026-09-14
 
 The completed run is named `exp30_epoch`. It contains 30 unique CSV epochs and both `best.pt` and `last.pt`. From epoch 0 to 29, train box loss decreased from `0.10221` to `0.076912`, and classification loss decreased from `0.043962` to `0.03722`, while objectness loss remained noisy and ended at `0.074991`. Epoch 29 achieved precision `0.30842`, recall `0.46296`, mAP50 `0.35436`, and mAP50-95 `0.11719`. The supported conclusion is that the network has learned and started to converge after warmup, but has not reached a stable plateau; the three-image validation set is too small for a strong generalization claim.
+
+### Parameter tuning note — 2026-09-14
+
+Parameter tuning may improve validation metrics, but the 14/3 train/validation split is too small for reliable search. Keep `exp30_epoch` as the baseline, change only one variable per run, and never use the three test images to select parameters. The first controlled candidates are 50 epochs with otherwise identical settings and a separate 30-epoch run with `--freeze 10`. Prefer adding diverse labeled images over extensive tuning; higher metrics on three validation images do not establish generalization. Commands and comparison rules are recorded in `REPORT.md` under `แนวทางปรับ parameters`.
