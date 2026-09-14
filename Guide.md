@@ -314,3 +314,7 @@ Parameter tuning may improve validation metrics, but the 14/3 train/validation s
 ### Run cleanup — 2026-09-14
 
 Only two generated runs are retained: `runs/f09_box/smoke_1epoch_tensorboard` (the verified one-epoch TensorBoard smoke test) and `runs/f09_box/baseline_5epochs` (the clean five-epoch baseline). All other run directories, including the 30-epoch experiment, were deleted at the user's request. Historical 30-epoch metrics remain documented in `REPORT.md`, but its weights and event files are no longer available. Step 7 and Step 8 now reference the retained five-epoch baseline.
+
+### Extended dataset verification — 2026-09-14
+
+The expanded dataset contains 250 train, 50 validation, and 50 test image/label pairs (350 JPEG images at 1280×720, 2,455 objects). Label structure, class IDs, normalized coordinates, image readability, image/label pairing, and cross-split SHA-256 duplication checks all pass. Before training, change the stale D-drive path in `datasets/f09_box/data.yaml` to the portable `path: ../datasets/f09_box`. Use a new one-epoch CPU smoke run (`dataset350_smoke`) first; if it has finite losses and produces the required TensorBoard tags, use `dataset350_baseline30` for a controlled 30-epoch baseline. Full counts and commands are recorded in `REPORT.md`.

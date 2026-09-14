@@ -180,6 +180,32 @@ python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box
 - metrics ของการทดลอง 30 epochs ยังคงอยู่ในรายงานเพื่อเป็นหลักฐานทางข้อความ แต่ไฟล์ `best.pt`, `last.pt`, TensorBoard event และ artifacts ของ run นั้นถูกลบแล้วและกู้คืนจาก workspace ไม่ได้
 - อัปเดตคำสั่ง Step 7 และ Step 8 ใน `Guide.md` ให้ใช้ `baseline_5epochs/weights/best.pt` และระบุ `--device cpu`
 
+### 2026-09-14 — ตรวจ dataset ที่ขยายเป็น 350 ภาพ
+
+- split ใหม่: train 250 ภาพ/250 labels, validation 50 ภาพ/50 labels และ test 50 ภาพ/50 labels; ไม่มี label ว่าง
+- ภาพทั้งหมด 350 รูปเป็น JPEG ขนาด 1280×720 และเปิดตรวจด้วย Pillow ได้โดยไม่มีไฟล์เสีย
+- จำนวน objects: train 1,754, validation 350 และ test 351 รวม 2,455 objects
+- class distribution รวม: class 0 `lane` 700 objects, class 1 `track-line` 1,053 objects และ class 2 `sideway` 702 objects
+- ทุก label มี 5 fields ตาม YOLO detection format, class ID อยู่ใน `{0,1,2}`, normalized coordinates อยู่ใน `[0,1]` และ width/height มากกว่า 0
+- ชื่อ stem ของภาพและ label จับคู่ครบทุก split ไม่มี orphan label หรือภาพที่ไม่มี label
+- ตรวจ SHA-256 ของภาพทั้งหมดแล้วไม่พบไฟล์ภาพซ้ำข้าม train/val/test
+- `manifest.csv` มี header และ 350 records สอดคล้องกับจำนวนภาพ
+- ข้อผิดพลาดที่ต้องแก้ก่อน train: `datasets/f09_box/data.yaml` ยังระบุ `path: 'D:/CoE Y.4 T.1/241-353/code/F09-TensorBoard/datasets/f09_box'` แต่ workspace ปัจจุบันอยู่ไดรฟ์ C ให้เปลี่ยนเป็น portable path `path: ../datasets/f09_box` ซึ่ง YOLOv5 resolve จากโฟลเดอร์ repository
+- smoke test ที่เหมาะสม: CPU, batch size 2, 1 epoch = 125 training iterations ซึ่งผ่าน warmup ขั้นต่ำ 100 iterations และตรวจ pipeline ทั้งชุดได้
+- baseline ที่แนะนำหลัง smoke test ผ่าน: 30 epochs = ประมาณ 3,750 training iterations ใช้ชื่อ run ใหม่และไม่ใช้ `--exist-ok`
+
+คำสั่ง smoke test:
+
+```powershell
+python train.py --img 640 --batch-size 2 --epochs 1 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name dataset350_smoke
+```
+
+คำสั่ง baseline 30 epochs:
+
+```powershell
+python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name dataset350_baseline30
+```
+
 ## นโยบายการบันทึก
 
 ตั้งแต่ 2026-09-14 เป็นต้นไป การเปลี่ยนแปลงโค้ด ผลการทดลอง การตัดสินใจ และการทำงานสำคัญของงานนี้ต้องบันทึกใน `REPORT.md` พร้อมอัปเดตสถานะที่เกี่ยวข้องใน `Guide.md`
