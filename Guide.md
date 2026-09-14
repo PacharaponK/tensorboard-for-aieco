@@ -302,3 +302,7 @@ python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box
 ```
 
 Do not use `--exist-ok`. Judge the result from epoch-level train and validation losses together with precision, recall, mAP50, and mAP50-95. A decreasing train loss accompanied by worsening validation results indicates overfitting, not successful generalization.
+
+### 30-epoch result — 2026-09-14
+
+The completed run is named `exp30_epoch`. It contains 30 unique CSV epochs and both `best.pt` and `last.pt`. From epoch 0 to 29, train box loss decreased from `0.10221` to `0.076912`, and classification loss decreased from `0.043962` to `0.03722`, while objectness loss remained noisy and ended at `0.074991`. Epoch 29 achieved precision `0.30842`, recall `0.46296`, mAP50 `0.35436`, and mAP50-95 `0.11719`. The supported conclusion is that the network has learned and started to converge after warmup, but has not reached a stable plateau; the three-image validation set is too small for a strong generalization claim.

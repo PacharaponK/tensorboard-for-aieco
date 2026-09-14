@@ -136,6 +136,18 @@ callbacks.run(
 python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name exp20_30e
 ```
 
+### 2026-09-14 — ผลทดลอง 30 epochs (`exp30_epoch`)
+
+- run จบครบ 30 epochs และมี `best.pt` กับ `last.pt` ที่ `yolov5/runs/f09_box/exp30_epoch/weights/`
+- `results.csv` มี 30 records สำหรับ epoch 0–29 ไม่มี epoch ซ้ำ
+- จาก epoch 0 ถึง epoch 29: `train/box_loss` ลดจาก `0.10221` เป็น `0.076912` และ `train/cls_loss` ลดจาก `0.043962` เป็น `0.03722`
+- `train/obj_loss` เพิ่มจาก `0.063952` เป็น `0.074991` และยังแกว่ง จึงยังไม่ใช่การลู่ลงพร้อมกันของ loss ทุกองค์ประกอบ
+- ผล epoch 29: precision `0.30842`, recall `0.46296`, mAP50 `0.35436` และ mAP50-95 `0.11719`; เป็นค่าดีที่สุดของ run ตาม mAP50
+- validation ที่ epoch 29: box loss `0.044287`, objectness loss `0.055044` และ classification loss `0.02095`
+- เมื่อเทียบกับช่วงต้น metrics เพิ่มขึ้นอย่างมีนัยสำคัญ ขณะที่ box/classification losses มีแนวโน้มลดลง จึงสรุปว่า network เรียนรู้และ **เริ่ม converge บางส่วน** หลังพ้น warmup
+- ยังไม่ควรเรียกว่า converge สมบูรณ์ เพราะ objectness loss และ recall ผันผวน, curves ยังไม่ plateau อย่างนิ่ง และ validation set มีเพียง 3 ภาพ
+- กราฟ `train/total_loss` ระดับ iteration ยังคงแกว่งจาก batch composition และการใช้ within-epoch running mean; ใช้ epoch-level component losses และ validation metrics เป็นหลักในการสรุป
+
 ## นโยบายการบันทึก
 
 ตั้งแต่ 2026-09-14 เป็นต้นไป การเปลี่ยนแปลงโค้ด ผลการทดลอง การตัดสินใจ และการทำงานสำคัญของงานนี้ต้องบันทึกใน `REPORT.md` พร้อมอัปเดตสถานะที่เกี่ยวข้องใน `Guide.md`
