@@ -169,6 +169,17 @@ python train.py --img 640 --batch-size 2 --epochs 50 --data '..\datasets\f09_box
 python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --freeze 10 --project runs\f09_box --name exp30_freeze10
 ```
 
+### 2026-09-14 — ล้างและเปลี่ยนชื่อผลการเทรน
+
+- เก็บ `yolov5/runs/f09_box/smoke_tags` และเปลี่ยนชื่อเป็น `yolov5/runs/f09_box/smoke_1epoch_tensorboard` เพื่อระบุว่าเป็น smoke test 1 epoch ที่ใช้ยืนยัน TensorBoard tags
+- เก็บ `yolov5/runs/f09_box/exp20_clean` และเปลี่ยนชื่อเป็น `yolov5/runs/f09_box/baseline_5epochs` เพื่อระบุว่าเป็น baseline 5 epochs ที่ไม่มี run ปะปน
+- ลบถาวร: `f09_box/exp20`, `f09_box/exp30_epoch`, `f09_box/smoke`, และ `train/exp` ถึง `train/exp7`
+- ลบโฟลเดอร์ `yolov5/runs/train` หลังจากไม่มี run เหลือ
+- หลัง cleanup เหลือผลการเทรนเพียง `baseline_5epochs` และ `smoke_1epoch_tensorboard`
+- ผล generated เหล่านี้ถูก ignore ด้วย `.gitignore` จึงไม่มี weights, event files หรือภาพผลลัพธ์ถูก commit
+- metrics ของการทดลอง 30 epochs ยังคงอยู่ในรายงานเพื่อเป็นหลักฐานทางข้อความ แต่ไฟล์ `best.pt`, `last.pt`, TensorBoard event และ artifacts ของ run นั้นถูกลบแล้วและกู้คืนจาก workspace ไม่ได้
+- อัปเดตคำสั่ง Step 7 และ Step 8 ใน `Guide.md` ให้ใช้ `baseline_5epochs/weights/best.pt` และระบุ `--device cpu`
+
 ## นโยบายการบันทึก
 
 ตั้งแต่ 2026-09-14 เป็นต้นไป การเปลี่ยนแปลงโค้ด ผลการทดลอง การตัดสินใจ และการทำงานสำคัญของงานนี้ต้องบันทึกใน `REPORT.md` พร้อมอัปเดตสถานะที่เกี่ยวข้องใน `Guide.md`

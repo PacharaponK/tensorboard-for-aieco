@@ -204,8 +204,8 @@ python train.py --img 640 --batch-size 2 --epochs 5 --data '..\datasets\f09_box\
 ใช้ `best.pt` และ test split 3 รูป:
 
 ```powershell
-python val.py --weights runs\f09_box\exp20\weights\best.pt --data '..\datasets\f09_box\data.yaml' --task test --img 640
-python detect.py --weights runs\f09_box\exp20\weights\best.pt --source '..\datasets\f09_box\images\test' --img 640 --save-txt --save-conf --project runs\f09_box --name predict20 --exist-ok
+python val.py --weights runs\f09_box\baseline_5epochs\weights\best.pt --data '..\datasets\f09_box\data.yaml' --task test --img 640 --device cpu
+python detect.py --weights runs\f09_box\baseline_5epochs\weights\best.pt --source '..\datasets\f09_box\images\test' --img 640 --device cpu --save-txt --save-conf --project runs\f09_box --name predict20
 ```
 
 - [ ] เก็บภาพ prediction ครบ 3 รูป
@@ -216,7 +216,7 @@ python detect.py --weights runs\f09_box\exp20\weights\best.pt --source '..\datas
 ## Step 8 — เก็บหลักฐานจาก TensorBoard
 
 ```powershell
-tensorboard --logdir runs\f09_box\exp20
+tensorboard --logdir runs\f09_box\baseline_5epochs
 ```
 
 ถ่ายภาพหรือ export plot โดยให้เห็นชื่อ run, ชื่อแกน และค่าครบ:
@@ -309,4 +309,8 @@ The completed run is named `exp30_epoch`. It contains 30 unique CSV epochs and b
 
 ### Parameter tuning note — 2026-09-14
 
-Parameter tuning may improve validation metrics, but the 14/3 train/validation split is too small for reliable search. Keep `exp30_epoch` as the baseline, change only one variable per run, and never use the three test images to select parameters. The first controlled candidates are 50 epochs with otherwise identical settings and a separate 30-epoch run with `--freeze 10`. Prefer adding diverse labeled images over extensive tuning; higher metrics on three validation images do not establish generalization. Commands and comparison rules are recorded in `REPORT.md` under `แนวทางปรับ parameters`.
+Parameter tuning may improve validation metrics, but the 14/3 train/validation split is too small for reliable search. The deleted `exp30_epoch` remains a historical baseline through its recorded metrics; regenerate a clean 30-epoch baseline before any future tuning comparison. Change only one variable per run, and never use the three test images to select parameters. The first controlled candidates are 50 epochs with otherwise identical settings and a separate 30-epoch run with `--freeze 10`. Prefer adding diverse labeled images over extensive tuning; higher metrics on three validation images do not establish generalization. Commands and comparison rules are recorded in `REPORT.md` under `แนวทางปรับ parameters`.
+
+### Run cleanup — 2026-09-14
+
+Only two generated runs are retained: `runs/f09_box/smoke_1epoch_tensorboard` (the verified one-epoch TensorBoard smoke test) and `runs/f09_box/baseline_5epochs` (the clean five-epoch baseline). All other run directories, including the 30-epoch experiment, were deleted at the user's request. Historical 30-epoch metrics remain documented in `REPORT.md`, but its weights and event files are no longer available. Step 7 and Step 8 now reference the retained five-epoch baseline.
