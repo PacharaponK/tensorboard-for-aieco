@@ -294,3 +294,11 @@ The first `exp20` directory is not suitable for final evidence: `results.csv` co
 ### Clean run convergence review — 2026-09-14
 
 `exp20_clean` contains one event file and exactly five CSV rows for epochs 0–4. The loss is not expected to decrease smoothly: the run has only 35 iterations, while YOLOv5 enforces at least 100 warmup iterations, so the entire run remains in warmup. In addition, the custom `train/total_loss` currently plots the within-epoch running mean (`mloss`) at every global step; that mean resets each epoch and can create visible discontinuities. Epoch losses fluctuate and metrics decline after an early peak, so the supported conclusion is that the network has **not converged within five epochs**.
+
+To inspect convergence beyond warmup, run one controlled 30-epoch experiment (about 210 iterations) without changing the other hyperparameters:
+
+```powershell
+python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name exp20_30e
+```
+
+Do not use `--exist-ok`. Judge the result from epoch-level train and validation losses together with precision, recall, mAP50, and mAP50-95. A decreasing train loss accompanied by worsening validation results indicates overfitting, not successful generalization.

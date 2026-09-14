@@ -120,6 +120,22 @@ callbacks.run(
 - ค่า epoch-level ยืนยันว่า `box_loss` แกว่ง, `obj_loss` เพิ่ม และ metrics สูงสุดช่วง epoch 1–2 ก่อนลดลง ดังนั้นข้อสรุปสำหรับรายงานคือ network **ยังไม่ converge** ภายใน 5 epochs
 - ผลนี้ไม่ใช่ runtime error และใช้ตอบคำถามเรื่อง convergence ได้ตามขอบเขตของ Guide แต่หากต้องการกราฟ total loss แบบ raw per-batch ที่ตีความตรงกว่าเดิม ต้องเปลี่ยน logger ให้รับ `loss_items` ของ batch ปัจจุบันแทน `mloss`
 
+### 2026-09-14 — แผนทดลองเพื่อดูแนวโน้ม convergence
+
+- คง `batch-size=2`, image size 640, pretrained `yolov5n.pt` และ hyperparameters เดิม เพื่อเปลี่ยนตัวแปรหลักเพียงจำนวน epochs
+- เพิ่มจาก 5 เป็น 30 epochs: 14 training images ให้ 7 batches ต่อ epoch รวมประมาณ 210 iterations ซึ่งผ่าน warmup ขั้นต่ำ 100 iterations และเหลือช่วงหลัง warmup ให้สังเกตแนวโน้ม
+- ใช้ run ใหม่ `exp20_30e` โดยไม่ใช้ `--exist-ok` เพื่อป้องกัน event/CSV ปะปน
+- ใช้ CPU เนื่องจาก GPU+AMP configuration ปัจจุบันเคยให้ NaN
+- ประเมิน convergence จาก epoch-level train losses ร่วมกับ validation losses, precision, recall, mAP50 และ mAP50-95 ไม่ใช้ `total_loss` หรือ training loss เพียงกราฟเดียว
+- หาก train loss ลดลงแต่ validation loss เพิ่มหรือ metrics ลดลง ให้สรุปว่าเริ่ม overfit แทนที่จะสรุปว่า generalize ดี เนื่องจาก dataset มีเพียง 20 ภาพ
+- การเพิ่ม epochs ช่วยให้มีข้อมูลมากพอสำหรับดูแนวโน้ม แต่ไม่รับประกันว่า loss จะลดแบบ monotonic หรือ metrics จะดีขึ้น
+
+คำสั่งทดลอง:
+
+```powershell
+python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name exp20_30e
+```
+
 ## นโยบายการบันทึก
 
 ตั้งแต่ 2026-09-14 เป็นต้นไป การเปลี่ยนแปลงโค้ด ผลการทดลอง การตัดสินใจ และการทำงานสำคัญของงานนี้ต้องบันทึกใน `REPORT.md` พร้อมอัปเดตสถานะที่เกี่ยวข้องใน `Guide.md`
