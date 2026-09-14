@@ -215,6 +215,16 @@ python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box
 - ตรวจด้วย `utils.general.check_dataset()` แล้ว resolve เป็น `C:\Users\student\ai-eco\tensorboard-for-aieco\datasets\f09_box` และพบ train/val/test paths กับ class names ครบ
 - การรันที่ล้มเหลวไม่ได้เริ่ม training และไม่ถือเป็นผล smoke test; ต้องรันคำสั่ง `dataset350_smoke` ซ้ำหลังตรวจ path ผ่าน
 
+### 2026-09-14 — รวบรวมหลักฐานผลการรันใน `result/`
+
+- สร้าง `result/RUN_SUMMARY.md` เป็นรายงานแยกสำหรับผลการรันสำคัญ 4 รอบ พร้อม settings, best metrics, ข้อสรุป และลิงก์ภาพหลักฐาน
+- สร้าง `result/metrics.csv` เป็นตาราง machine-readable โดยเลือก best epoch จาก mAP50-95 ของแต่ละ run
+- สร้าง `result/screenshots/` และคัดลอกกราฟราย run, confusion matrix, PR/F1 curves, label distribution และ validation predictions ด้วยชื่อไฟล์ที่สื่อความหมาย
+- เปิด TensorBoard 2.21.0 บน localhost และใช้ Microsoft Edge headless แคป overview ของ runs กับหน้าของ `dataset350_baseline30` โดยเฉพาะ
+- run สำคัญที่รวม: `smoke_1epoch_tensorboard`, `baseline_5epochs`, `dataset350_smoke_retry` และ `dataset350_baseline30`
+- best result คือ `dataset350_baseline30` epoch 28: precision `0.99648`, recall `1.0`, mAP50 `0.995` และ mAP50-95 `0.79994`
+- เพิ่ม `.gitignore` pattern `*.cache.npy` หลังพบ `train.cache.npy` และ `val.cache.npy` ที่สร้างระหว่าง dataset scan เพื่อไม่ให้ generated cache เข้า commit
+
 ## นโยบายการบันทึก
 
 ตั้งแต่ 2026-09-14 เป็นต้นไป การเปลี่ยนแปลงโค้ด ผลการทดลอง การตัดสินใจ และการทำงานสำคัญของงานนี้ต้องบันทึกใน `REPORT.md` พร้อมอัปเดตสถานะที่เกี่ยวข้องใน `Guide.md`
