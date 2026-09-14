@@ -1,4 +1,4 @@
-path: 'C:\Users\student\ai-eco\tensorboard-for-aieco\datasets\f09_box'
+path: 'D:/CoE Y.4 T.1/241-353/code/F09-TensorBoard/datasets/f09_box'
 train: images/train
 val: images/val
 test: images/test
