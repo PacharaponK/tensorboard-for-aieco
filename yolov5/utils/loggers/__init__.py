@@ -173,6 +173,8 @@ class Loggers:
         """Logs training batch end events, plots images, and updates external loggers with batch-end data."""
         log_dict = dict(zip(self.keys[:3], vals))
         if self.tb:
+            for key, value in log_dict.items():
+                self.tb.add_scalar(f"{key}_iter", value, ni)
             self.tb.add_scalar("train/total_loss", sum(vals), ni)
             self.tb.add_scalar("train/learning_rate", learning_rate, ni)
         # Callback runs on train batch end

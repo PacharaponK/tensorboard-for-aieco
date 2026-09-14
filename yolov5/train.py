@@ -436,7 +436,7 @@ def train(hyp, opt, device, callbacks):
                     imgs,
                     targets,
                     paths,
-                    list(mloss),
+                    list(loss_items),
                     optimizer.param_groups[0]["lr"],
                 )
                 if callbacks.stop_training:
