@@ -284,3 +284,5 @@ From 2026-09-14 onward, record every important code change, experiment result, d
 Detailed file-by-file changes, before/after behavior, rationale, and verification evidence for the Step 5 TensorBoard modification are recorded in the `รายละเอียดการแก้ไขโค้ด` and `การตรวจสอบหลังแก้ไข` sections of `REPORT.md`.
 
 Generated Python caches, YOLO run outputs, TensorBoard events, downloaded model weights, and dataset index caches are excluded through the repository `.gitignore`. The implementation and documentation are committed separately; see `แผนการแบ่ง Git commits` in `REPORT.md`.
+
+The completed commits and their hashes are recorded in the `Git commits ที่สร้างแล้ว` section of `REPORT.md`.

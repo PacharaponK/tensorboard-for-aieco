@@ -86,6 +86,13 @@ callbacks.run(
 
 การแก้ไขเดิมใน `datasets/f09_box/data.yaml` ไม่เกี่ยวข้องกับงานนี้และจะไม่ถูกรวมใน commits ข้างต้น
 
+## Git commits ที่สร้างแล้ว
+
+- `0bceee9 chore: ignore generated training artifacts` — เพิ่ม `.gitignore`
+- `8f25f49 feat: log total loss and learning rate` — เพิ่ม TensorBoard logging ใน training callback และ logger
+- `c1bcacd docs: record TensorBoard logging changes` — บันทึกรายงาน รายละเอียดการแก้ไข และอัปเดตคู่มือ
+- Git ใช้ committer identity ที่ตั้งอัตโนมัติเป็น `Student <student@lab.coe.psu.ac.th>`; ไม่มีการแก้ global Git configuration
+
 ## การตรวจสอบหลังแก้ไข
 
 - `python -m py_compile train.py utils/loggers/__init__.py`: ผ่าน
