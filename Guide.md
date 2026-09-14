@@ -189,7 +189,7 @@ train/learning_rate
 ใช้ `batch-size=2` และ 5 epochs เป็นค่าเริ่มต้น เพราะ 14 train images จะได้ประมาณ 7 iterations ต่อ epoch รวมประมาณ 35 iterations ซึ่งผ่านเงื่อนไขอย่างน้อย 30 iterations
 
 ```powershell
-python train.py --img 640 --batch-size 2 --epochs 5 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --project runs\f09_box --name exp20 --exist-ok
+python train.py --img 640 --batch-size 2 --epochs 5 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name exp20 --exist-ok
 ```
 
 หาก GPU memory ไม่พอ ให้ลด batch size และเพิ่ม epochs จนจำนวน iterations รวมยังไม่น้อยกว่า 30 อย่าเปลี่ยนหลาย hyperparameters พร้อมกัน
@@ -269,3 +269,18 @@ results/part1-box/
 - [YOLOv5 custom training](https://docs.ultralytics.com/yolov5/tutorials/train_custom_data/)
 - [YOLOv5 repository](https://github.com/ultralytics/yolov5)
 - [PyTorch TensorBoard](https://docs.pytorch.org/tutorials/intermediate/tensorboard_tutorial.html)
+
+## Progress update — 2026-09-14
+
+- Step 4 smoke test passed on CPU without NaN loss; the successful run is `yolov5/runs/train/exp6`.
+- The original TensorBoard output contains train/validation losses, evaluation metrics, and `x/lr0`–`x/lr2`.
+- Step 5 is verified by `yolov5/runs/f09_box/smoke_tags`: `train/total_loss` and `train/learning_rate` were each recorded for all 7 training batches using global iteration as the step.
+- GPU training with PyTorch `2.11.0+cu128` and AMP produced NaN losses on the GTX 1660 SUPER. Use CPU for the recorded run unless GPU training is revalidated with AMP disabled.
+
+## Documentation policy
+
+From 2026-09-14 onward, record every important code change, experiment result, decision, and work milestone in `REPORT.md`, and update the corresponding status or instructions in this guide.
+
+Detailed file-by-file changes, before/after behavior, rationale, and verification evidence for the Step 5 TensorBoard modification are recorded in the `รายละเอียดการแก้ไขโค้ด` and `การตรวจสอบหลังแก้ไข` sections of `REPORT.md`.
+
+Generated Python caches, YOLO run outputs, TensorBoard events, downloaded model weights, and dataset index caches are excluded through the repository `.gitignore`. The implementation and documentation are committed separately; see `แผนการแบ่ง Git commits` in `REPORT.md`.
