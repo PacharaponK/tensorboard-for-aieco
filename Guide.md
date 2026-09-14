@@ -318,3 +318,5 @@ Only two generated runs are retained: `runs/f09_box/smoke_1epoch_tensorboard` (t
 ### Extended dataset verification — 2026-09-14
 
 The expanded dataset contains 250 train, 50 validation, and 50 test image/label pairs (350 JPEG images at 1280×720, 2,455 objects). Label structure, class IDs, normalized coordinates, image readability, image/label pairing, and cross-split SHA-256 duplication checks all pass. Before training, change the stale D-drive path in `datasets/f09_box/data.yaml` to the portable `path: ../datasets/f09_box`. Use a new one-epoch CPU smoke run (`dataset350_smoke`) first; if it has finite losses and produces the required TensorBoard tags, use `dataset350_baseline30` for a controlled 30-epoch baseline. Full counts and commands are recorded in `REPORT.md`.
+
+The initial expanded-dataset smoke command failed before training because the stale D-drive path had not yet been changed. `datasets/f09_box/data.yaml` now uses `path: ../datasets/f09_box`; validate this resolution and rerun the one-epoch smoke test. The failed launch produced no training result and should not be treated as a completed smoke run.

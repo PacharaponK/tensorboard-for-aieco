@@ -206,6 +206,15 @@ python train.py --img 640 --batch-size 2 --epochs 1 --data '..\datasets\f09_box\
 python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name dataset350_baseline30
 ```
 
+### 2026-09-14 — แก้ Dataset not found ของ expanded dataset
+
+- smoke test ครั้งแรกหยุดก่อนสร้าง dataloader พร้อมข้อความว่าไม่พบ `D:\CoE Y.4 T.1\241-353\code\F09-TensorBoard\datasets\f09_box\images\val`
+- สาเหตุคือ `datasets/f09_box/data.yaml` ยังคงใช้ absolute path จาก workspace เดิมบนไดรฟ์ D ขณะที่ repository ปัจจุบันอยู่บนไดรฟ์ C
+- แก้ `path` จาก `D:/CoE Y.4 T.1/241-353/code/F09-TensorBoard/datasets/f09_box` เป็น `../datasets/f09_box`
+- relative path ถูก resolve โดย YOLOv5 จาก repository root ทำให้ใช้ได้กับ workspace ปัจจุบันและย้าย repository ได้ง่ายกว่า absolute path
+- ตรวจด้วย `utils.general.check_dataset()` แล้ว resolve เป็น `C:\Users\student\ai-eco\tensorboard-for-aieco\datasets\f09_box` และพบ train/val/test paths กับ class names ครบ
+- การรันที่ล้มเหลวไม่ได้เริ่ม training และไม่ถือเป็นผล smoke test; ต้องรันคำสั่ง `dataset350_smoke` ซ้ำหลังตรวจ path ผ่าน
+
 ## นโยบายการบันทึก
 
 ตั้งแต่ 2026-09-14 เป็นต้นไป การเปลี่ยนแปลงโค้ด ผลการทดลอง การตัดสินใจ และการทำงานสำคัญของงานนี้ต้องบันทึกใน `REPORT.md` พร้อมอัปเดตสถานะที่เกี่ยวข้องใน `Guide.md`
