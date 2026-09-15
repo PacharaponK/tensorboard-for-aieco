@@ -1,5 +1,5 @@
-run,dataset_train,dataset_val,dataset_test,epochs,batch_size,imgsz,device,best_epoch,precision,recall,mAP50,mAP50_95,status
-smoke_1epoch_tensorboard,14,3,3,1,2,640,cpu,0,0.0050689,0.16667,0.0037295,0.0018802,passed
-baseline_5epochs,14,3,3,5,2,640,cpu,0,0.0050689,0.16667,0.0037295,0.0018802,passed_not_converged
-dataset350_smoke_retry,250,50,50,1,2,640,cpu,0,0.19594,0.21719,0.15029,0.043326,passed
-dataset350_baseline30,250,50,50,30,2,640,cpu,28,0.99648,1.0,0.995,0.79994,passed_best
+dataset_size,epochs,best_epoch,val_precision,val_recall,val_map50,val_map50_95,test_precision,test_recall,test_map50,test_map50_95,iteration_points,event_counts_ok,steps_contiguous,values_finite,max_total_sum_error,best_weights_exists,last_weights_exists
+30,30,28,0.49001,0.24633,0.29038,0.096851,0.141,0.318,0.212,0.0706,330,True,True,True,2.2351741790771484e-08,True,True
+60,30,18,0.42966,0.73457,0.71995,0.33475,0.365,0.708,0.546,0.249,630,True,True,True,1.862645149230957e-08,True,True
+150,30,28,0.88012,1.0,0.995,0.70766,0.886,0.987,0.984,0.652,1620,True,True,True,2.2351741790771484e-08,True,True
+350,30,29,0.99625,1.0,0.995,0.81224,0.99,0.99,0.989,0.725,3750,True,True,True,1.862645149230957e-08,True,True

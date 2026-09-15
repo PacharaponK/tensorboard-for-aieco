@@ -3,14 +3,196 @@ type: assignment
 instructor: P.Fern
 date: 2026-08-31
 due:
-status: todo
+status: complete
 tags: [cv, tool, pytorch]
 aliases: [F09 Part 1 YOLO-Box]
 ---
 
 # Part 1 — YOLOv5 Box Detection
 
+> [!success] สถานะการทดลองล่าสุด — เสร็จเมื่อ 2026-09-15
+> รันใหม่ครบ 4 ขนาด 30/60/150/350 ที่ 30 epochs ด้วย YOLOv5n และ seed 2569 แล้ว ตรวจ TensorBoard iteration tags ครบ 330/630/1,620/3,750 จุดโดยไม่มี NaN/Inf ประเมิน `best.pt` ทุกตัวบน common test set 50 ภาพเดียวกัน และเก็บสรุป ตาราง metrics, TensorBoard UI screenshot, กราฟ และ inference 3 ภาพไว้ใน `result/` ผลหลักดูที่ `result/RUN_SUMMARY.md`
+> ภาพแยกแต่ละ run อยู่ใน `result/screenshots/per_run/` โดยมีทั้ง dashboard จาก TensorBoard event data และกราฟ `results.png` ต้นฉบับของ YOLOv5 สำหรับขนาด 30/60/150/350
+> รายงานฉบับพร้อมส่งที่รวมตาราง คำอธิบาย และภาพทั้งหมดอยู่ที่ `result/FINAL_REPORT.md`; weight distribution ถูกพักไว้เพราะเป็นส่วนเสริมที่อาจารย์ไม่ได้กำหนด
+
 > แผนนี้ขยาย Part 1 จาก [[P.Fern/Assignments/F09_31-08-69/instruction]] เป้าหมายคือ train YOLOv5n ตรวจจับ bounding box ด้วยภาพ 20 รูป และเก็บกราฟที่โจทย์กำหนดใน TensorBoard
+
+> [!note] รอบผลที่ใช้ส่ง — 2026-09-15
+> ผลเก่าถูกล้างก่อนเริ่มรอบนี้ ผลหลักฐานปัจจุบันมาจาก run ใหม่ `size30_e30_seed2569`, `size60_e30_seed2569`, `size150_e30_seed2569` และ `size350_e30_seed2569` เท่านั้น
+
+## สถานะเทียบกับสไลด์ต้นฉบับ — ตรวจเมื่อ 2026-09-15
+
+ข้อกำหนดอ้างอิงอยู่ใน `Slides-n5-241-353 TensorBoard 2569.pdf` หน้า 17–19
+
+| ข้อกำหนด | หลักฐานปัจจุบัน | สถานะ |
+| --- | --- | --- |
+| ใช้ pretrained YOLOv5 รุ่น n หรือ s | ใช้ `yolov5n.pt` | เสร็จ |
+| ปรับ `data.yaml` ให้ตรงกับ dataset | `datasets/f09_box/data.yaml` ใช้ portable path และมี 3 classes | เสร็จ |
+| คำนวณ loss อย่างน้อย 30 iterations | 330/630/1,620/3,750 iterations | เสร็จ |
+| มีโมเดลที่ train แล้ว | ทุก run มี `best.pt` และ `last.pt` | เสร็จ |
+| total loss และ LR เทียบกับ iteration | event counts ครบและค่าทั้งหมด finite | เสร็จ |
+| box/objectness/classification loss เทียบกับ iteration | Step 6A บันทึกครบทุก iteration | เสร็จ |
+| evaluation metrics ใน TensorBoard | event 30 epochs และกราฟใน `result/screenshots/` | เสร็จ |
+| evaluation บน test split | common test ครบ 4 โมเดลบน 50 ภาพ/351 objects | เสร็จ |
+| inference ตัวอย่างจาก test split 3 ภาพ | `05_inference_first.jpg`–`07_inference_last.jpg` | เสร็จ |
+| ภาพ TensorBoard สำหรับรายงาน | UI screenshot และกราฟ export อยู่ใน `result/screenshots/` | เสร็จ |
+| คำตอบว่า network converge อย่างไร | บันทึกข้อสรุปใน `result/RUN_SUMMARY.md` | เสร็จ |
+
+สไลด์หน้า 17 ระบุ split เป็น train 100/test 100 แต่ dataset ปัจจุบันเป็น train 250/validation 50/test 50 ก่อนส่งต้องทำอย่างใดอย่างหนึ่งให้มีหลักฐานชัดเจน:
+
+1. ใช้ split ปัจจุบันและเขียนในรายงานว่าเพิ่ม validation set และใช้ข้อมูลมากกว่าตัวอย่างในสไลด์ โดย test 50 รูปไม่ถูกใช้เลือกโมเดล หรือ
+2. หากอาจารย์กำหนดจำนวน 100/100 แบบตายตัว ให้สร้าง dataset สำหรับส่งใหม่และ train/evaluate ใหม่ทั้งหมดด้วย split นั้น
+
+อย่าผสมผลจากคนละ split ในตารางหรือข้อสรุปเดียวกัน
+
+## Dataset subsets สำหรับทดลองขนาดข้อมูล — สร้างเมื่อ 2026-09-15
+
+สร้างจาก `datasets/f09_box` ด้วย seed `2569` แบบ deterministic และ nested ภายในแต่ละ split ชุดเล็กเป็นส่วนหนึ่งของชุดใหญ่ จึงสร้างซ้ำและเปรียบเทียบลำดับการเพิ่มข้อมูลได้
+
+| Dataset | Train | Validation | Test | Iterations/epoch เมื่อ batch=2 | 30 epochs |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `datasets/f09_box_30` | 22 | 4 | 4 | 11 | 330 |
+| `datasets/f09_box_60` | 42 | 9 | 9 | 21 | 630 |
+| `datasets/f09_box_150` | 108 | 21 | 21 | 54 | 1,620 |
+| `datasets/f09_box_350` | 250 | 50 | 50 | 125 | 3,750 |
+
+แต่ละโฟลเดอร์มี `images/{train,val,test}`, `labels/{train,val,test}`, `manifest.csv`, `data.yaml` และ `README.md` ครบ สคริปต์สร้างซ้ำอยู่ที่ `create_f09_box_subsets.py` โดยตั้งใจให้หยุดพร้อม error หากโฟลเดอร์ปลายทางมีอยู่แล้ว เพื่อไม่เขียนทับ dataset โดยไม่ตั้งใจ
+
+จำนวน 30/60/150/350 ในชื่อนี้หมายถึงจำนวนภาพรวมทุก split หากต้องการเปรียบเทียบความสามารถของโมเดลอย่างยุติธรรม ให้รายงาน validation ของแต่ละชุดแยกกัน และประเมิน `best.pt` ทุกตัวซ้ำบน test 50 ภาพชุดเดียวจาก `f09_box_350` เพราะคะแนนจาก test 4, 9, 21 และ 50 ภาพเปรียบเทียบตรงกันไม่ได้
+
+run เก่าที่สร้างก่อน Step 6A ยังใช้ weights หรือ epoch-level metrics เดิมได้ แต่ไม่สามารถเติม component-loss history ราย iteration ย้อนหลังได้ หากต้องการกราฟตามสไลด์และเปรียบเทียบทั้งสี่ขนาด ต้อง train แต่ละชุดใหม่หลังใช้โค้ด Step 6A โดยคง model, seed, image size, batch size, epochs และ hyperparameters ให้เหมือนกัน
+
+- [x] สร้าง dataset 30/60/150/350 ครบ
+- [x] จำนวน image/label ตรงกันทุก split
+- [x] ตรวจว่า dataset เล็ก nested อยู่ใน dataset ใหญ่
+- [x] `data.yaml` ทั้งสี่ชุด resolve ผ่าน YOLOv5
+- [x] รัน training ชุดเปรียบเทียบ 30/60/150/350 ครบ 30 epochs เมื่อ 2026-09-15
+
+## แผนการทดลอง 4 ขนาด: 30/60/150/350
+
+### เป้าหมายและตัวแปรควบคุม
+
+ทดลองว่าปริมาณข้อมูลสัมพันธ์กับ loss, convergence และ test metrics อย่างไร โดยเปลี่ยนเฉพาะ dataset และคงค่าต่อไปนี้เหมือนกันทุก run:
+
+```text
+model: yolov5n.pt
+epochs: 30
+batch_size: 2
+imgsz: 640
+device: cpu
+workers: 0
+seed: 2569
+hyperparameters: data/hyps/hyp.scratch-low.yaml (default)
+```
+
+ใช้ 30 epochs เท่ากันเพื่อให้แต่ละโมเดลเห็นข้อมูลของตนจำนวนรอบเท่ากัน จำนวน optimizer iterations จะแตกต่างตามจำนวน train images และต้องรายงานความแตกต่างนี้ด้วย ห้ามใช้ `--exist-ok` เพราะอาจนำ event จากหลาย execution มาปนกัน
+
+### ลำดับการทำงาน
+
+1. ตรวจว่า `yolov5/runs/` ยังไม่มีผลเก่า และ `.venv`, `yolov5n.pt`, dataset YAML ทั้งสี่ชุดพร้อม
+2. รัน preflight ด้วย dataset 30 เพียง 1 epoch
+3. ตรวจว่า loss ไม่มี NaN และ TensorBoard มี iteration tags ทั้งห้าครบ 11 steps
+4. รัน full training ตามลำดับ 30 → 60 → 150 → 350 เพื่อพบปัญหาเร็วและประเมินเวลาจากชุดเล็กก่อน
+5. ตรวจแต่ละ run ทันทีหลังจบ ห้ามเริ่ม run ถัดไปหาก event tags ไม่ครบหรือมี NaN
+6. ประเมิน `best.pt` ทั้งสี่ตัวบน common test set 50 ภาพเดียวกันจาก `f09_box_350`
+7. เปิด TensorBoard จาก parent directory เดียวเพื่อเปรียบเทียบทั้งสี่ runs
+8. สร้างตารางสรุปและเลือกโมเดล final จาก common-test mAP50-95 โดยใช้ qualitative inference ประกอบ
+
+### Phase A — Preflight
+
+ทำจากโฟลเดอร์ `yolov5/`:
+
+```powershell
+python train.py --img 640 --batch-size 2 --epochs 1 --data '..\datasets\f09_box_30\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --seed 2569 --project runs\f09_box_compare --name preflight_size30
+```
+
+เกณฑ์ผ่าน:
+
+- `results.csv` มี 1 epoch
+- มี `best.pt`, `last.pt` และ TensorBoard event file
+- `train/box_loss_iter`, `train/obj_loss_iter`, `train/cls_loss_iter`, `train/total_loss`, `train/learning_rate` มีอย่างละ 11 steps ตั้งแต่ 0–10
+- ทุก loss เป็น finite และ `total_loss` เท่ากับผลรวมสาม component losses ภายใน floating-point tolerance
+
+### Phase B — Full training
+
+รันทีละคำสั่ง รอให้คำสั่งก่อนหน้าจบและตรวจผ่านก่อนเริ่มคำสั่งถัดไป:
+
+```powershell
+python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box_30\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --seed 2569 --project runs\f09_box_compare --name size30_e30_seed2569
+
+python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box_60\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --seed 2569 --project runs\f09_box_compare --name size60_e30_seed2569
+
+python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box_150\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --seed 2569 --project runs\f09_box_compare --name size150_e30_seed2569
+
+python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box_350\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --seed 2569 --project runs\f09_box_compare --name size350_e30_seed2569
+```
+
+จำนวน iteration tags ที่คาดหวัง:
+
+| Run | Steps ที่ต้องมีต่อ tag | ช่วง global step |
+| --- | ---: | ---: |
+| `size30_e30_seed2569` | 330 | 0–329 |
+| `size60_e30_seed2569` | 630 | 0–629 |
+| `size150_e30_seed2569` | 1,620 | 0–1,619 |
+| `size350_e30_seed2569` | 3,750 | 0–3,749 |
+
+เวลาบน CPU จากความเร็วที่เคยวัดเป็นเพียงค่าประมาณ: size 30 ราว 3–5 นาที, size 60 ราว 6–10 นาที, size 150 ราว 12–18 นาที และ size 350 ราว 25–35 นาที เวลาจริงขึ้นกับโหลดของเครื่อง
+
+### Phase C — ตรวจผลหลังแต่ละ run
+
+ตรวจสิ่งต่อไปนี้ก่อนรันชุดถัดไป:
+
+- process exit code เป็น 0 และ `results.csv` มี 30 แถวสำหรับ epochs 0–29 โดยไม่ซ้ำ
+- ไม่มี NaN/Inf ใน loss หรือ metrics
+- มี `weights/best.pt`, `weights/last.pt`, `opt.yaml` และ event file อย่างละชุด
+- iteration tags ทั้งห้ามีจำนวนตามตาราง Phase B และมี step ต่อเนื่อง
+- epoch-level tags มี 30 steps: component losses, validation losses, precision, recall, mAP50 และ mAP50-95
+- จดเวลาที่ใช้, best epoch และ validation metrics ที่ best epoch
+
+### Phase D — Common test evaluation
+
+validation split ภายใน dataset มีขนาดต่างกัน จึงใช้เพื่อดูการเรียนรู้ของ run นั้นเท่านั้น การเปรียบเทียบสุดท้ายต้องประเมินทุกโมเดลบน test 50 ภาพเดียวกันจาก `f09_box_350`:
+
+```powershell
+python val.py --weights 'runs\f09_box_compare\size30_e30_seed2569\weights\best.pt' --data '..\datasets\f09_box_350\data.yaml' --task test --img 640 --batch-size 2 --device cpu --workers 0 --project runs\f09_box_compare_test --name size30_common_test
+python val.py --weights 'runs\f09_box_compare\size60_e30_seed2569\weights\best.pt' --data '..\datasets\f09_box_350\data.yaml' --task test --img 640 --batch-size 2 --device cpu --workers 0 --project runs\f09_box_compare_test --name size60_common_test
+python val.py --weights 'runs\f09_box_compare\size150_e30_seed2569\weights\best.pt' --data '..\datasets\f09_box_350\data.yaml' --task test --img 640 --batch-size 2 --device cpu --workers 0 --project runs\f09_box_compare_test --name size150_common_test
+python val.py --weights 'runs\f09_box_compare\size350_e30_seed2569\weights\best.pt' --data '..\datasets\f09_box_350\data.yaml' --task test --img 640 --batch-size 2 --device cpu --workers 0 --project runs\f09_box_compare_test --name size350_common_test
+```
+
+บันทึก precision, recall, mAP50 และ mAP50-95 จากแถว `all` ของแต่ละ run ห้ามเปรียบเทียบคะแนน test 4/9/21/50 ภาพจาก YAML แต่ละชุดเป็นผลหลัก
+
+### Phase E — TensorBoard และตารางสรุป
+
+```powershell
+tensorboard --logdir runs\f09_box_compare --port 6006
+```
+
+แคปกราฟโดยเลือก runs ทั้งสี่และตั้ง Horizontal Axis เป็น Step แยกภาพสำหรับ:
+
+1. `train/total_loss`
+2. `train/box_loss_iter`
+3. `train/obj_loss_iter`
+4. `train/cls_loss_iter`
+5. `train/learning_rate`
+6. epoch-level validation losses และ evaluation metrics
+
+ตารางสรุปสุดท้าย:
+
+| Dataset | Train/Val/Test | Iterations | เวลา | Best epoch | Common-test P | R | mAP50 | mAP50-95 | หมายเหตุ |
+| --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 30 | 22/4/4 | 330 | 28 | 0.141 | 0.318 | 0.212 | 0.0706 | ผ่าน | ต่ำสุด |
+| 60 | 42/9/9 | 630 | 18 | 0.365 | 0.708 | 0.546 | 0.2490 | ผ่าน | ดีขึ้นจาก 30 |
+| 150 | 108/21/21 | 1,620 | 28 | 0.886 | 0.987 | 0.984 | 0.6520 | ผ่าน | เพิ่มขึ้นมาก |
+| 350 | 250/50/50 | 3,750 | 29 | 0.990 | 0.990 | 0.989 | 0.7250 | ผ่าน | final model |
+
+เกณฑ์เลือก final model คือ common-test mAP50-95 สูงสุด โดยตรวจว่า precision/recall ไม่ผิดปกติ, loss ไม่มี NaN, validation ไม่แย่ลงต่อเนื่อง และ inference บน test images สมเหตุสมผล หากคะแนนใกล้กันให้เลือกโมเดลที่เสถียรกว่าและอธิบายข้อจำกัดจากข้อมูลที่เป็นลำดับเฟรม
+
+- [x] Phase A preflight ผ่าน: 11 steps ต่อ tag, finite และ total loss ตรงกับผลรวม component losses
+- [x] Full training 30/60/150/350 ผ่านครบ
+- [x] Common test evaluation ครบสี่โมเดลบน 50 ภาพ/351 objects
+- [x] TensorBoard screenshots ครบห้า training tags และ evaluation metrics
+- [x] ตารางเปรียบเทียบ ข้อสรุป และ inference 3 ภาพเสร็จใน `result/`
 
 ## ผลลัพธ์ที่ต้องได้
 
@@ -141,9 +323,9 @@ pip install tensorboard
 
 ใช้ clean environment นี้และอย่าตั้ง API key ของ Comet ML หรือ ClearML หาก logger ใดทำงานอัตโนมัติ ให้ปิด integration นั้นก่อน train รอบจริง
 
-- [ ] `python --version` ใช้ interpreter จาก `.venv`
-- [ ] `python -c "import torch; print(torch.cuda.is_available())"` แสดงสถานะ GPU
-- [ ] `tensorboard --help` ทำงาน
+- [x] `python --version` ใช้ interpreter จาก `.venv`
+- [x] ตรวจ device แล้วและบังคับใช้ CPU ทุก run ด้วย `--device cpu`
+- [x] TensorBoard 2.21.0 เปิด event logs ได้และบันทึก UI screenshot แล้ว
 
 ## Step 4 — Smoke test 1 epoch
 
@@ -156,10 +338,10 @@ tensorboard --logdir runs\f09_box
 
 เปิด URL ที่ TensorBoard แสดง แล้วตรวจหน้า **Scalars**:
 
-- [ ] เห็น training losses
-- [ ] เห็น validation/evaluation metrics
-- [ ] เห็น learning rate
-- [ ] step บนแกน x เพิ่มตาม iteration หรือ epoch ตามชนิด metric
+- [x] เห็น training losses
+- [x] เห็น validation/evaluation metrics
+- [x] เห็น learning rate
+- [x] step บนแกน x เพิ่มตาม iteration หรือ epoch ตามชนิด metric
 
 ## Step 5 — เติม TensorBoard logging เท่าที่ขาด
 
@@ -184,85 +366,184 @@ train/learning_rate
 
 หลังแก้ ให้ลบเฉพาะโฟลเดอร์ `runs/f09_box/smoke` หรือเปลี่ยน `--name` เพื่อไม่ให้ event จากคนละรอบปนกัน
 
-## Step 6 — Train รอบเก็บผล
+## Step 6 — สร้าง baseline ใหม่หลังล้างผล
 
-ใช้ `batch-size=2` และ 5 epochs เป็นค่าเริ่มต้น เพราะ 14 train images จะได้ประมาณ 7 iterations ต่อ epoch รวมประมาณ 35 iterations ซึ่งผ่านเงื่อนไขอย่างน้อย 30 iterations
+สร้าง baseline ใหม่ครบทั้งสี่ขนาดแล้วใน `yolov5/runs/f09_box_compare/` โดยใช้ run names ตาม Phase B และเลือก `size350_e30_seed2569/weights/best.pt` เป็น final model จาก common-test mAP50-95 สูงสุด
 
-```powershell
-python train.py --img 640 --batch-size 2 --epochs 5 --data '..\datasets\f09_box\data.yaml' --weights yolov5n.pt --device cpu --workers 0 --project runs\f09_box --name exp20_clean
+- [x] run จบโดยไม่มี NaN loss
+- [x] มี `best.pt` และ `last.pt`
+- [x] มี TensorBoard event file
+- [x] บันทึก device, batch size, epochs และ image size ใน `opt.yaml`
+- [x] มีอย่างน้อย 30 iterations
+
+### Step 6A — ทำ component losses ระดับ iteration เมื่อใช้เกณฑ์ตามตัวอักษรของสไลด์
+
+โค้ด Step 6A ถูก merge เข้า `main` แล้วที่ commit `708f301` และ smoke test ก่อนล้างผลเคยยืนยันว่า iteration tags ทั้งห้าทำงานครบ แต่ event และ output ของ smoke test ถูกลบตามคำสั่งล้างผล การ train ครั้งใหม่จะบันทึก component losses, total loss และ learning rate ระดับ iteration โดยอัตโนมัติ
+
+แนวทางแก้:
+
+1. ใน training loop ส่ง `loss_items` ของ batch ปัจจุบันเข้า `on_train_batch_end` แทน `mloss` ซึ่งเป็น running mean ภายใน epoch
+2. ใน TensorBoard logger บันทึก `vals[0]`, `vals[1]`, `vals[2]` เป็น `train/box_loss_iter`, `train/obj_loss_iter`, `train/cls_loss_iter`
+3. ใช้ `ni` เป็น global step เช่นเดียวกับ `train/total_loss` และ `train/learning_rate`
+4. คง epoch-level tags เดิมไว้เพื่อใช้ดูแนวโน้มที่ smooth กว่า
+5. smoke test ก่อน แล้วตรวจว่า iteration tags มีจำนวน steps ตรงกับจำนวน batches
+6. รัน final ด้วยชื่อใหม่และไม่ใช้ `--exist-ok`
+
+จุดแก้ใน `yolov5/train.py` ภายใน callback `on_train_batch_end`:
+
+```python
+# เดิม
+list(mloss),
+
+# ใหม่: raw loss ของ batch ปัจจุบัน
+list(loss_items.detach()),
 ```
 
-หาก GPU memory ไม่พอ ให้ลด batch size และเพิ่ม epochs จนจำนวน iterations รวมยังไม่น้อยกว่า 30 อย่าเปลี่ยนหลาย hyperparameters พร้อมกัน
+เพิ่มใน `on_train_batch_end` ของ `yolov5/utils/loggers/__init__.py` ภายใต้เงื่อนไข `if self.tb:`:
 
-- [ ] run จบโดยไม่มี NaN loss
-- [ ] มี `runs/f09_box/exp20/weights/best.pt`
-- [ ] มี TensorBoard event file
-- [ ] บันทึก device, batch size, epochs, image size และเวลาที่ใช้
-
-## Step 7 — Evaluation และ inference
-
-ใช้ `best.pt` และ test split 3 รูป:
-
-```powershell
-python val.py --weights runs\f09_box\baseline_5epochs\weights\best.pt --data '..\datasets\f09_box\data.yaml' --task test --img 640 --device cpu
-python detect.py --weights runs\f09_box\baseline_5epochs\weights\best.pt --source '..\datasets\f09_box\images\test' --img 640 --device cpu --save-txt --save-conf --project runs\f09_box --name predict20
+```python
+self.tb.add_scalar("train/box_loss_iter", vals[0], ni)
+self.tb.add_scalar("train/obj_loss_iter", vals[1], ni)
+self.tb.add_scalar("train/cls_loss_iter", vals[2], ni)
+self.tb.add_scalar("train/total_loss", sum(vals), ni)
+self.tb.add_scalar("train/learning_rate", learning_rate, ni)
 ```
 
-- [ ] เก็บภาพ prediction ครบ 3 รูป
-- [ ] ตรวจว่ากรอบไม่หลุดขอบภาพและ class อ่านได้
-- [ ] จด precision, recall, mAP50 และ mAP50-95 ที่โปรแกรมรายงาน
-- [ ] ใช้ภาพ test ชุดเดิมต่อใน Part 2 และ Part 3
+ใช้คำสั่ง Phase A และ Phase B ในหัวข้อ `แผนการทดลอง 4 ขนาด: 30/60/150/350` เพื่อให้ชื่อ run และ dataset ตรงกับแผนเปรียบเทียบล่าสุด
 
-## Step 8 — เก็บหลักฐานจาก TensorBoard
+ตรวจ smoke event ก่อนเริ่ม 30 epochs:
 
 ```powershell
-tensorboard --logdir runs\f09_box\baseline_5epochs
+python -c "from tensorboard.backend.event_processing.event_accumulator import EventAccumulator; import glob; p=glob.glob(r'runs\f09_box_compare\preflight_size30\events.out.tfevents.*')[0]; a=EventAccumulator(p); a.Reload(); print({t: len(a.Scalars(t)) for t in a.Tags()['scalars'] if t.endswith('_iter') or t in ('train/total_loss','train/learning_rate')})"
 ```
 
-ถ่ายภาพหรือ export plot โดยให้เห็นชื่อ run, ชื่อแกน และค่าครบ:
+ผล preflight ที่ผ่านต้องมีทั้งห้า tags อย่างละ 11 steps สำหรับ dataset 30 ห้ามเริ่ม full training หากจำนวน steps ไม่เท่ากันหรือ loss มี NaN
 
-- [ ] total loss
-- [ ] objectness loss
-- [ ] classification loss
-- [ ] box regression loss
-- [ ] learning rate
-- [ ] evaluation metrics
-- [ ] weight distribution over time ถ้าทำส่วนเสริม
+## Step 7 — Evaluation และ inference บน test split
 
-## Step 9 — ตอบเรื่อง convergence
+ทำ Phase D ให้ครบก่อน แล้วเลือก final run จาก common-test results ทำงานจากโฟลเดอร์ `yolov5/` และกำหนด `$finalRun` เป็นชื่อผู้ชนะเพียงตัวเดียว ตัวอย่างตั้งต้นด้านล่างใช้ size 350 แต่ต้องเปลี่ยนหาก size อื่นชนะ
 
-อย่าตอบจาก training loss เส้นเดียว ให้พิจารณาพร้อมกัน:
+### Step 7A — Standalone test evaluation
 
-1. training losses ลดลงแล้วเริ่มนิ่งหรือไม่
-2. validation loss/metrics ดีขึ้นแล้วเริ่ม plateau หรือไม่
-3. train ดีขึ้นแต่ validation แย่ลงหรือไม่ ซึ่งบ่งชี้ overfitting
-4. prediction บน test 3 รูปสมเหตุสมผลหรือไม่
+```powershell
+$finalRun = 'size350_e30_seed2569'
+$weights = Join-Path 'runs\f09_box_compare' "$finalRun\weights\best.pt"
+New-Item -ItemType Directory -Force '..\result' | Out-Null
+python val.py --weights $weights --data '..\datasets\f09_box_350\data.yaml' --task test --img 640 --batch-size 2 --device cpu --workers 0 --project runs\f09_box_final --name "${finalRun}-test-eval" 2>&1 | Tee-Object '..\result\final_test_metrics.txt'
+```
 
-ชุดข้อมูลมีเพียง 20 รูป จึงสรุปได้เฉพาะว่า run นี้เริ่ม converge หรือ overfit อย่างไร ห้ามอ้างว่าโมเดล generalize ได้ดีจากตัวอย่างขนาดเล็กนี้
+ตรวจและบันทึกค่าจากแถว `all`: precision, recall, mAP50 และ mAP50-95 ห้ามนำ validation metrics มาแทน common-test metrics ให้เก็บ confusion matrix/curves ของ test run แยกชื่อจาก training evidence
 
-## Step 10 — คัดผลกลับเข้า vault
+- [x] test evaluation จบโดยไม่มี error
+- [x] บันทึก precision, recall, mAP50 และ mAP50-95 ของ test split
+- [x] ระบุจำนวน test images 50 ภาพและ 351 objects
+- [x] เก็บ output และกราฟไว้ภายใต้ `result/`
 
-คัดเฉพาะสิ่งที่ใช้ส่งกลับมายังโฟลเดอร์งาน เช่น:
+### Step 7B — Test inference และเลือกตัวอย่าง 3 ภาพ
+
+```powershell
+python detect.py --weights $weights --source '..\datasets\f09_box_350\images\test' --img 640 --device cpu --save-txt --save-conf --project runs\f09_box_final --name "${finalRun}-test-inference"
+```
+
+รัน inference ทั้ง 50 test images แล้วเลือกตัวอย่างที่อยู่ห่างกันในลำดับเฟรม 3 ภาพ เพื่อไม่ให้รายงานมีภาพแทบเหมือนกัน แนะนำเริ่มตรวจจาก:
+
+- `frame_0700_f18154.jpg`
+- `frame_0725_f18803.jpg`
+- `frame_0749_f19425.jpg`
+
+คัดภาพ output เป็น `result/screenshots/12_test_inference_1.jpg` ถึง `14_test_inference_3.jpg` และตรวจด้วยตาว่า class อ่านได้, confidence แสดงครบ, กรอบไม่หลุดขอบภาพ และมีตัวอย่างข้อผิดพลาดของโมเดลหากพบ ห้ามใช้ `val_batch*_pred.jpg` แทน test inference
+
+```powershell
+New-Item -ItemType Directory -Force '..\result\screenshots' | Out-Null
+Copy-Item "runs\f09_box_final\${finalRun}-test-inference\frame_0700_f18154.jpg" '..\result\screenshots\12_test_inference_1.jpg'
+Copy-Item "runs\f09_box_final\${finalRun}-test-inference\frame_0725_f18803.jpg" '..\result\screenshots\13_test_inference_2.jpg'
+Copy-Item "runs\f09_box_final\${finalRun}-test-inference\frame_0749_f19425.jpg" '..\result\screenshots\14_test_inference_3.jpg'
+```
+
+- [x] มี inference output ของ test split ครบ 50 ภาพ
+- [x] คัดตัวอย่าง test 3 ภาพเข้า `result/screenshots/`
+- [x] เขียนคำอธิบายสั้น ๆ ใน `result/RUN_SUMMARY.md`
+
+## Step 8 — เก็บภาพ TensorBoard สำหรับรายงาน
+
+```powershell
+tensorboard --logdir runs\f09_box_compare --port 6006
+```
+
+เลือก final run ที่ชนะเมื่อต้องการภาพสำหรับส่ง หรือเลือกทั้งสี่ runs เมื่อต้องการภาพเปรียบเทียบ ปิด smoothing หรือระบุค่า smoothing ในคำอธิบายภาพ และตั้ง Horizontal Axis เป็น Step
+
+ต้องถ่ายภาพโดยขยาย card จริง ไม่ใช่แสดงเพียงชื่อกลุ่มที่พับอยู่:
+
+1. training losses: total, objectness, classification และ box regression
+2. evaluation metrics: precision, recall, mAP50 และ mAP50-95
+3. scheduled learning rate
+
+ในทุกภาพต้องเห็นชื่อ run, tag/ชื่อกราฟ, แกน x และเส้นกราฟชัดเจน ควรแบ่งเป็น 2–3 screenshots แทนการย่อทุก card ลงในภาพเดียว แล้วเก็บเป็น:
 
 ```text
-results/part1-box/
-├── tensorboard/
-├── predictions/
-├── metrics.txt
-└── train-settings.md
+result/screenshots/15_tensorboard_training_losses.png
+result/screenshots/16_tensorboard_evaluation_metrics.png
+result/screenshots/17_tensorboard_learning_rate.png
 ```
 
-ไม่คัด repo, `.venv`, weights ทุก epoch หรือ cache เข้ามาใน vault
+- [x] training loss plots ครบ 4 ค่า
+- [x] evaluation metrics plots ครบ 4 ค่า
+- [x] learning-rate plot ชัดเจน
+- [x] แกน x และชื่อ run มองเห็นได้
+- [x] weight distribution ไม่จัดทำในรอบนี้ เพราะเป็นส่วนเสริมที่อาจารย์ไม่ได้กำหนด
+
+## Step 9 — เขียนข้อสรุป convergence
+
+ตอบโดยอ้างหลักฐานอย่างน้อยสามส่วนร่วมกัน:
+
+1. แนวโน้ม training และ validation losses ตลอด 30 epochs
+2. precision, recall, mAP50 และ mAP50-95 ว่าเพิ่มขึ้นและเริ่ม plateau หรือยัง
+3. คุณภาพเชิงภาพของ test inference 3 รูปและ standalone test metrics
+
+ข้อสรุปจากผลจริง:
+
+> โมเดล size-350 มีแนวโน้ม converge เพราะ box, objectness, classification และ total losses ลดลงต่อเนื่อง ขณะที่ precision/recall/mAP เพิ่มขึ้นและเริ่มคงที่ช่วงท้าย ผล validation ดีที่สุดที่ epoch 29 คือ precision 0.99625, recall 1.0, mAP50 0.995 และ mAP50-95 0.81224 ส่วน common test 50 ภาพได้ precision 0.990, recall 0.990, mAP50 0.989 และ mAP50-95 0.725 ภาพ inference ต้น/กลาง/ท้ายตรวจพบ lane, track-line และ sideway ได้สอดคล้องกับวัตถุหลัก อย่างไรก็ตาม ภาพมาจากลำดับเฟรมที่สัมพันธ์กัน จึงยังใช้ยืนยัน generalization ต่อสภาพแวดล้อมใหม่ไม่ได้
+
+อย่าเขียนว่า converge จากค่า mAP สูงเพียงค่าเดียว และอย่าเรียก validation predictions ว่า test inference
+
+- [x] เติม test metrics ลงในคำตอบ
+- [x] อ้างภาพ TensorBoard ที่เกี่ยวข้อง
+- [x] อธิบายข้อจำกัดของข้อมูลที่เป็นลำดับเฟรม
+
+## Step 10 — จัดชุดหลักฐานและรายงานส่ง
+
+โครงสร้างขั้นต่ำที่ต้องมี:
+
+```text
+result/
+├── RUN_SUMMARY.md
+├── metrics.csv
+├── dataset350_test_metrics.txt
+└── screenshots/
+    ├── 12_test_inference_1.jpg
+    ├── 13_test_inference_2.jpg
+    ├── 14_test_inference_3.jpg
+    ├── 15_tensorboard_training_losses.png
+    ├── 16_tensorboard_evaluation_metrics.png
+    └── 17_tensorboard_learning_rate.png
+```
+
+อัปเดต `RUN_SUMMARY.md` ให้มี test metrics, ลิงก์ inference 3 ภาพ, คำตอบ convergence และ training settings ของ final run จากนั้นนำเนื้อหาและภาพเหล่านี้ไปวางในรายงานส่ง Microsoft Teams
 
 ## Checklist จบ Part 1
 
-- [ ] dataset 20 รูปผ่าน visual check
-- [ ] training มีอย่างน้อย 30 iterations
-- [ ] TensorBoard มีทุก plot ที่โจทย์กำหนด
-- [ ] evaluation metrics ถูกบันทึก
-- [ ] inference test 3 รูปเสร็จ
-- [ ] ร่างคำตอบเรื่อง convergence แล้ว
-- [ ] ผลลัพธ์ที่ใช้ทำรายงานถูกคัดกลับเข้า vault
+- [x] YOLO detection dataset ผ่าน structural และ visual checks
+- [x] training มีอย่างน้อย 30 iterations
+- [x] มี `best.pt` จาก pretrained `yolov5n.pt`
+- [x] TensorBoard event มี total loss, component losses, metrics และ LR
+- [x] ใช้ split ปัจจุบัน 250/50/50 และระบุว่าเพิ่ม validation set พร้อมใช้ common test 50 ภาพที่ไม่ใช้ train
+- [x] สร้าง final runs ที่ log component losses ระดับ iteration
+- [x] standalone test evaluation เสร็จและบันทึก metrics แล้ว
+- [x] inference จาก test split 3 รูปเสร็จ
+- [x] ภาพ TensorBoard แสดง training losses, evaluation metrics และ LR ครบ
+- [x] เขียนคำตอบ convergence โดยอ้างกราฟและผล test
+- [x] อัปเดต `result/RUN_SUMMARY.md` และจัดเนื้อหาเข้า report
+- [x] ตรวจผลหลักว่า common test ใช้ split เดียวกันและ final inference ใช้ size-350 run
 
 ## แหล่งอ้างอิง
 
@@ -313,7 +594,7 @@ Parameter tuning may improve validation metrics, but the 14/3 train/validation s
 
 ### Run cleanup — 2026-09-14
 
-Only two generated runs are retained: `runs/f09_box/smoke_1epoch_tensorboard` (the verified one-epoch TensorBoard smoke test) and `runs/f09_box/baseline_5epochs` (the clean five-epoch baseline). All other run directories, including the 30-epoch experiment, were deleted at the user's request. Historical 30-epoch metrics remain documented in `REPORT.md`, but its weights and event files are no longer available. Step 7 and Step 8 now reference the retained five-epoch baseline.
+ข้อความนี้เป็นสถานะก่อนสร้าง expanded-dataset runs โดยตอนนั้นเหลือเพียง `smoke_1epoch_tensorboard` และ `baseline_5epochs` ต่อมามีการสร้าง `dataset350_smoke_retry` และ `dataset350_baseline30` สำเร็จแล้ว ปัจจุบัน Step 7–10 จึงอ้างอิง `dataset350_baseline30` และไม่ใช้ five-epoch baseline เป็นผลส่ง
 
 ### Extended dataset verification — 2026-09-14
 
@@ -326,3 +607,7 @@ The initial expanded-dataset smoke command failed before training because the st
 The important completed runs, best-epoch metrics, TensorBoard captures, YOLO result plots, confusion matrix, PR/F1 curves, label distribution, and validation prediction examples are collected separately under `result/`. Start with `result/RUN_SUMMARY.md`; machine-readable metrics are in `result/metrics.csv`, and all images are in `result/screenshots/`. The strongest run is `dataset350_baseline30` at epoch 28 with precision `0.99648`, recall `1.0`, mAP50 `0.995`, and mAP50-95 `0.79994`.
 
 Dataset scan caches ending in both `.cache` and `.cache.npy` are generated artifacts and are excluded by `.gitignore`.
+
+### Part 1 completion audit — 2026-09-15
+
+ตรวจสไลด์ต้นฉบับหน้า 17–19 เทียบกับผลรอบใหม่แล้ว งาน training, standalone common-test evaluation, test inference 3 ภาพ, TensorBoard screenshots, component losses ระดับ iteration และคำตอบ convergence เสร็จครบ หลักฐานอยู่ใน `result/` และเลือก size-350 เป็น final model จาก common-test mAP50-95 สูงสุด ทั้งนี้รายงานใช้ split ปัจจุบัน 250/50/50 พร้อมระบุว่าแตกต่างจากตัวอย่าง train 100/test 100 ในสไลด์

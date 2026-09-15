@@ -1,0 +1,8 @@
+path: ../datasets/f09_box_350
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: lane
+  1: track-line
+  2: sideway

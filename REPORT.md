@@ -228,3 +228,69 @@ python train.py --img 640 --batch-size 2 --epochs 30 --data '..\datasets\f09_box
 ## นโยบายการบันทึก
 
 ตั้งแต่ 2026-09-14 เป็นต้นไป การเปลี่ยนแปลงโค้ด ผลการทดลอง การตัดสินใจ และการทำงานสำคัญของงานนี้ต้องบันทึกใน `REPORT.md` พร้อมอัปเดตสถานะที่เกี่ยวข้องใน `Guide.md`
+
+### 2026-09-15 — ตรวจความครบถ้วนของ Part 1 เทียบสไลด์ต้นฉบับ
+
+- ตรวจ `Slides-n5-241-353 TensorBoard 2569.pdf` หน้า 17–19 เทียบกับ dataset, run artifacts, TensorBoard event และหลักฐานใน `result/`
+- ยืนยันว่า `dataset350_baseline30` มี 30 epochs หรือ 3,750 training iterations, มี `best.pt`, และ TensorBoard มี `train/total_loss` กับ `train/learning_rate` อย่างละ 3,750 steps
+- พบว่า `train/box_loss`, `train/obj_loss` และ `train/cls_loss` ของ run ปัจจุบันมี 30 steps ระดับ epoch จึงเพิ่มทางเลือกสำหรับสร้าง iteration-level tags และรัน final ใหม่ไว้ใน `Guide.md`
+- พบว่ายังไม่มี standalone evaluation บน test split และไม่มี inference samples จาก test split 3 ภาพ ภาพ prediction ที่เก็บอยู่เดิมเป็น validation batches
+- พบว่าภาพ TensorBoard เดิมพับกลุ่ม training losses, metrics และ LR อยู่ จึงยังใช้เป็นหลักฐานกราฟครบทุกข้อในรายงานไม่ได้
+- เพิ่มคำสั่ง test evaluation, test inference, หลักเกณฑ์เลือกตัวอย่าง 3 ภาพ, รายการ screenshots ที่ต้องเก็บ, โครงคำตอบ convergence และ final checklist ใน `Guide.md`
+- บันทึก decision gate เรื่อง split ปัจจุบัน 250/50/50 ซึ่งต่างจากข้อความ train 100/test 100 ในสไลด์ เพื่อป้องกันการผสมผลจากคนละ split ในรายงาน
+
+### 2026-09-15 — สร้าง dataset subsets ขนาด 30/60/150/350
+
+- เพิ่ม `create_f09_box_subsets.py` เพื่อสร้าง physical YOLO datasets แบบ deterministic nested subsets จาก `datasets/f09_box` ด้วย seed `2569`
+- สร้าง `datasets/f09_box_30` เป็น train/val/test 22/4/4, `f09_box_60` เป็น 42/9/9, `f09_box_150` เป็น 108/21/21 และ `f09_box_350` เป็น 250/50/50
+- แต่ละชุดมี images, labels, `manifest.csv`, portable `data.yaml` และ `README.md` ครบ
+- ตรวจแล้ว image/label stems จับคู่ตรงกันทุก split, manifest มี 30/60/150/350 records, ชุดเล็กเป็น subset ของชุดใหญ่ และ YOLOv5 `check_dataset()` resolve YAML ทั้งสี่ชุดผ่าน
+- ยังไม่ได้เริ่ม training ชุดเปรียบเทียบตามคำสั่งผู้ใช้ ผล `dataset350_final_iterloss` ที่เริ่มก่อนคำสั่งหยุดถูกยุติระหว่าง epoch 4 และลบไปพร้อม worktree จึงห้ามนับเป็น final run
+- smoke run ของ Step 6A จบครบ 125 iterations และยืนยันว่า iteration tags ทั้งห้ามี steps 0–124, ไม่มี NaN และ `total_loss` เท่ากับผลรวมสาม component losses ภายใน tolerance ของ float
+- commit `708f301` (`feat: log detection losses per iteration`) ถูก fast-forward เข้า `main` แล้ว จากนั้นลบ feature worktree และ branch `feat/tensorboard-iteration-losses` ตามคำสั่งผู้ใช้ โดยคัดลอก smoke evidence กลับมาไว้ที่ `yolov5/runs/f09_box/dataset350_iterloss_smoke` ก่อนลบ
+
+### 2026-09-15 — ล้างผลการ train เพื่อเริ่มการทดลองใหม่
+
+- ลบ `yolov5/runs/` ทั้งหมด รวม run directories, `best.pt`, `last.pt`, TensorBoard event files, plots, validation images และ artifacts จาก smoke/final attempts เดิม
+- ลบ `result/` ทั้งหมด รวม `RUN_SUMMARY.md`, `metrics.csv` และ screenshots เดิม
+- ลบ `train.cache`, `val.cache`, `train.cache.npy` และ `val.cache.npy` ใต้ `datasets/f09_box/labels/`
+- คง source code, virtual environment, pretrained `yolov5n.pt` และ dataset folders 30/60/150/350 ไว้
+- ผลและ metrics ที่บันทึกก่อนหัวข้อนี้เป็นประวัติการทำงานเท่านั้น ต้องไม่ใช้เป็นหลักฐานของการทดลองรอบใหม่
+
+### 2026-09-15 — จัดทำแผน train เปรียบเทียบ dataset 30/60/150/350
+
+- กำหนดให้ทั้งสี่ runs ใช้ YOLOv5n, 30 epochs, batch size 2, image size 640, CPU, workers 0, seed 2569 และ hyperparameters เดียวกัน โดยเปลี่ยนเฉพาะ dataset
+- กำหนดลำดับ preflight ด้วย dataset 30 ก่อน full training ตามลำดับ 30 → 60 → 150 → 350 พร้อม expected iteration steps 330/630/1,620/3,750
+- เพิ่มคำสั่ง train ครบสี่ชุด, เกณฑ์ตรวจ NaN/epochs/event tags/weights หลังแต่ละ run และประมาณเวลาบน CPU
+- กำหนดให้ประเมิน `best.pt` ทั้งสี่ตัวบน common test set 50 ภาพจาก `f09_box_350` เพื่อไม่เปรียบเทียบคะแนนจาก test sets ที่มีขนาดต่างกัน
+- เพิ่มแผน TensorBoard comparison, ตารางบันทึกผล และเกณฑ์เลือก final model จาก common-test mAP50-95 ร่วมกับความเสถียรของ loss และ qualitative inference
+- การแก้ครั้งนี้เป็นการจัดทำแผนเท่านั้น ยังไม่ได้เริ่ม training
+
+### 2026-09-15 — รันการทดลอง dataset 30/60/150/350 และจัดทำหลักฐาน
+
+- รัน preflight บน `f09_box_30` 1 epoch ผ่าน: iteration tags ทั้งห้ามีอย่างละ 11 steps (0–10), ทุกค่า finite และ `total_loss` ตรงกับผลรวม component losses ภายใน floating-point tolerance
+- รัน YOLOv5n ใหม่ครบ 30 epochs ด้วย batch size 2, image size 640, CPU, workers 0, seed 2569 และ default `hyp.scratch-low.yaml` โดยเปลี่ยนเฉพาะ dataset ตามลำดับ 30 → 60 → 150 → 350
+- ยืนยัน event counts ของ full runs เป็น 330/630/1,620/3,750 จุดต่อ tag, step ต่อเนื่อง, ไม่มี NaN/Inf, `results.csv` มี 30 epochs และทุก run มี `best.pt`/`last.pt`
+- best validation mAP50-95 ของขนาด 30/60/150/350 เท่ากับ 0.096851/0.33475/0.70766/0.81224 ที่ epoch 28/18/28/29 ตามลำดับ
+- ประเมิน `best.pt` ทั้งสี่ตัวบน common test split ของ `f09_box_350` เดียวกัน 50 ภาพ/351 objects ได้ mAP50-95 เท่ากับ 0.0706/0.249/0.652/0.725 และ mAP50 เท่ากับ 0.212/0.546/0.984/0.989
+- เลือก `size350_e30_seed2569/weights/best.pt` เป็น final model จาก common-test mAP50-95 สูงสุด และรัน inference บน test set ครบ 50 ภาพ ก่อนคัดภาพต้น/กลาง/ท้าย 3 ภาพไว้เป็นหลักฐาน
+- สร้าง `result/RUN_SUMMARY.md`, `result/metrics.csv`, raw common-test logs, TensorBoard UI screenshot, กราฟ iteration losses/validation metrics/LR/common-test comparison และ inference screenshots 3 ภาพ
+- เพิ่ม `create_experiment_results.py` เพื่อสร้าง metrics, ตรวจ event invariants และ export กราฟจาก TensorBoard event data ซ้ำได้
+- บันทึกข้อจำกัดว่า dataset เป็นลำดับเฟรมที่สัมพันธ์กัน จึงยังไม่เพียงพอสำหรับยืนยัน generalization ต่อสภาพแวดล้อมใหม่
+
+### 2026-09-15 — เพิ่ม screenshots แยกตามรอบการเทรน
+
+- เพิ่ม `result/screenshots/per_run/size30_tensorboard_dashboard.png`, `size60_tensorboard_dashboard.png`, `size150_tensorboard_dashboard.png` และ `size350_tensorboard_dashboard.png`
+- dashboard แต่ละภาพแสดง box/objectness/classification/total loss ระดับ iteration, scheduled learning rate และ validation metrics ของ run นั้นโดยไม่รวมเส้นจาก run อื่น
+- คัดลอกกราฟ `results.png` ต้นฉบับของ YOLOv5 แยกเป็น `size30_yolov5_results.png`, `size60_yolov5_results.png`, `size150_yolov5_results.png` และ `size350_yolov5_results.png`
+- ตรวจเปิด dashboard ทั้งสี่ภาพแล้ว ชื่อ run, จำนวน iterations และแกนกราฟอ่านได้ครบ
+
+### 2026-09-15 — จัดทำรายงานฉบับพร้อมส่ง
+
+- เพิ่ม `result/FINAL_REPORT.md` ภาษาไทย พร้อมวัตถุประสงค์, dataset splits, controlled settings, event verification, ตาราง validation/common-test metrics และเหตุผลเลือก final model
+- ฝังภาพ TensorBoard, กราฟเปรียบเทียบ, dashboard แยกทั้งสี่ run และ inference ต้น/กลาง/ท้าย พร้อมคำอธิบายภาพ
+- ระบุชัดเจนว่าใช้ split 250/50/50 ซึ่งต่างจากตัวอย่าง 100/100 ในสไลด์ และใช้ common test 50 ภาพที่ไม่ถูกใช้ train
+- เพิ่มคำตอบ convergence พร้อมค่าจริงและข้อจำกัดจากข้อมูลที่เป็นลำดับเฟรม
+- พัก weight distribution ไว้เนื่องจากเป็นส่วนเสริมและผู้ใช้ยืนยันว่าอาจารย์ไม่ได้กำหนด
+- สร้าง `result/FINAL_REPORT.html` และ `result/FINAL_REPORT.pdf` จาก Markdown โดย PDF ฝังตารางและภาพไว้ในไฟล์เดียวสำหรับอัปโหลดส่งงาน
+- ตรวจ render หน้าแรกของรายงานแล้ว ภาษาไทย ตาราง และรูปแบบหัวข้อแสดงผลถูกต้อง พร้อมลบ browser profile และภาพ preview ชั่วคราวออกจาก `result/`

@@ -1,0 +1,254 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>
+    @page { size: A4; margin: 18mm; }
+    body { font-family: "Tahoma", "Arial", sans-serif; color: #202124; line-height: 1.55;
+           max-width: 1000px; margin: 0 auto; font-size: 11pt; }
+    h1 { color: #12355b; border-bottom: 3px solid #1f77b4; padding-bottom: 8px; }
+    h2 { color: #174a7e; border-bottom: 1px solid #b8cce0; padding-bottom: 4px; margin-top: 28px; }
+    h3 { color: #245b89; margin-top: 22px; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 9.5pt; }
+    th, td { border: 1px solid #9aa0a6; padding: 6px 8px; text-align: left; }
+    th { background: #e8f0f8; }
+    tr:nth-child(even) { background: #f8f9fa; }
+    img { display: block; max-width: 100%; max-height: 235mm; margin: 12px auto 22px;
+          break-inside: avoid; page-break-inside: avoid; }
+    code { background: #f1f3f4; padding: 1px 4px; border-radius: 3px; }
+    p { orphans: 3; widows: 3; }
+    </style></head><body><h1>รายงานผล Part 1 — YOLOv5 Box Detection</h1>
+<h2>1. วัตถุประสงค์</h2>
+<p>ทดลองฝึกโมเดล YOLOv5n สำหรับตรวจจับ bounding box ของ <code>lane</code>, <code>track-line</code> และ <code>sideway</code>
+ด้วยชุดข้อมูล 4 ขนาด เพื่อศึกษาผลของจำนวนข้อมูลต่อ loss, convergence และประสิทธิภาพบน test set
+พร้อมบันทึก total loss, component losses และ learning rate ระดับ iteration ตามข้อกำหนดในสไลด์หน้า 17–19</p>
+<h2>2. การจัดเตรียมข้อมูล</h2>
+<p>สร้างชุดข้อมูลแบบ deterministic nested subsets ด้วย seed 2569 ชุดที่เล็กกว่าจะเป็นส่วนหนึ่งของชุดที่ใหญ่กว่า
+ภายใน split เดียวกัน ทำให้เปรียบเทียบผลจากการเพิ่มจำนวนข้อมูลได้โดยไม่สุ่มตัวอย่างคนละแบบ</p>
+<table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th style="text-align: right;">Train</th>
+<th style="text-align: right;">Validation</th>
+<th style="text-align: right;">Test</th>
+<th style="text-align: right;">จำนวนภาพรวม</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>f09_box_30</code></td>
+<td style="text-align: right;">22</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">30</td>
+</tr>
+<tr>
+<td><code>f09_box_60</code></td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">60</td>
+</tr>
+<tr>
+<td><code>f09_box_150</code></td>
+<td style="text-align: right;">108</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">150</td>
+</tr>
+<tr>
+<td><code>f09_box_350</code></td>
+<td style="text-align: right;">250</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">350</td>
+</tr>
+</tbody>
+</table>
+<p>สไลด์ยกตัวอย่างการแบ่ง train 100/test 100 แต่งานทดลองนี้ใช้ข้อมูลที่มีอยู่ทั้งหมดโดยเพิ่ม validation split
+และใช้ชุดใหญ่สุดเป็น train/validation/test เท่ากับ 250/50/50 ภาพ ส่วนการเปรียบเทียบโมเดลใช้ test split
+50 ภาพชุดเดียวกัน ซึ่งไม่ถูกนำไปใช้ฝึกโมเดล</p>
+<h2>3. การตั้งค่าการทดลอง</h2>
+<p>ควบคุมค่าต่อไปนี้ให้เหมือนกันทุก run และเปลี่ยนเฉพาะขนาด dataset:</p>
+<table>
+<thead>
+<tr>
+<th>รายการ</th>
+<th>ค่า</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model</td>
+<td>YOLOv5n pretrained weights (<code>yolov5n.pt</code>)</td>
+</tr>
+<tr>
+<td>Epochs</td>
+<td>30</td>
+</tr>
+<tr>
+<td>Batch size</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Image size</td>
+<td>640 × 640</td>
+</tr>
+<tr>
+<td>Device</td>
+<td>CPU</td>
+</tr>
+<tr>
+<td>Workers</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Seed</td>
+<td>2569</td>
+</tr>
+<tr>
+<td>Optimizer</td>
+<td>SGD</td>
+</tr>
+<tr>
+<td>Hyperparameters</td>
+<td><code>data/hyps/hyp.scratch-low.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<p>ก่อนรันจริงได้ทำ preflight บน dataset 30 จำนวน 1 epoch พบว่า TensorBoard tags ทั้งห้ามี 11 steps
+ครบตามจำนวน batches, ไม่มี NaN/Inf และ total loss เท่ากับผลรวม box, objectness และ classification loss
+ภายใน tolerance ของ floating-point</p>
+<h2>4. ผลการฝึกและการตรวจ TensorBoard events</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Dataset</th>
+<th style="text-align: right;">Training iterations</th>
+<th style="text-align: right;">Best epoch</th>
+<th style="text-align: right;">Best validation mAP50-95</th>
+<th>Event verification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">330</td>
+<td style="text-align: right;">28</td>
+<td style="text-align: right;">0.09685</td>
+<td>ผ่าน</td>
+</tr>
+<tr>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">630</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: right;">0.33475</td>
+<td>ผ่าน</td>
+</tr>
+<tr>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">1,620</td>
+<td style="text-align: right;">28</td>
+<td style="text-align: right;">0.70766</td>
+<td>ผ่าน</td>
+</tr>
+<tr>
+<td style="text-align: right;">350</td>
+<td style="text-align: right;">3,750</td>
+<td style="text-align: right;">29</td>
+<td style="text-align: right;">0.81224</td>
+<td>ผ่าน</td>
+</tr>
+</tbody>
+</table>
+<p>ทุก run มี iteration steps ต่อเนื่องตั้งแต่ 0, ค่าทั้งหมดเป็น finite, มี 30 แถวใน <code>results.csv</code>
+และมีทั้ง <code>best.pt</code> กับ <code>last.pt</code> โดยตรวจว่า <code>train/total_loss</code> เท่ากับผลรวมของ
+<code>train/box_loss_iter</code>, <code>train/obj_loss_iter</code> และ <code>train/cls_loss_iter</code></p>
+<h3>ภาพรวม TensorBoard</h3>
+<p><img alt="TensorBoard UI" src="screenshots/00_tensorboard_ui.png" /></p>
+<h3>Component losses ระดับ iteration</h3>
+<p><img alt="Iteration losses" src="screenshots/01_tensorboard_iteration_losses.png" /></p>
+<h3>Validation metrics</h3>
+<p><img alt="Validation metrics" src="screenshots/02_tensorboard_validation_metrics.png" /></p>
+<h3>Learning-rate schedule</h3>
+<p><img alt="Learning rate" src="screenshots/03_tensorboard_learning_rate.png" /></p>
+<h2>5. ผลประเมินบน common test set</h2>
+<p>นำ <code>best.pt</code> ของทุก run ไปประเมินบน test split เดียวกันจำนวน 50 ภาพและ 351 objects
+เพื่อไม่ให้คะแนนได้รับผลจากจำนวนหรือความยากของ test set ที่ต่างกัน</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Dataset</th>
+<th style="text-align: right;">Precision</th>
+<th style="text-align: right;">Recall</th>
+<th style="text-align: right;">mAP50</th>
+<th style="text-align: right;">mAP50-95</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">0.141</td>
+<td style="text-align: right;">0.318</td>
+<td style="text-align: right;">0.212</td>
+<td style="text-align: right;">0.0706</td>
+</tr>
+<tr>
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">0.365</td>
+<td style="text-align: right;">0.708</td>
+<td style="text-align: right;">0.546</td>
+<td style="text-align: right;">0.2490</td>
+</tr>
+<tr>
+<td style="text-align: right;">150</td>
+<td style="text-align: right;">0.886</td>
+<td style="text-align: right;">0.987</td>
+<td style="text-align: right;">0.984</td>
+<td style="text-align: right;">0.6520</td>
+</tr>
+<tr>
+<td style="text-align: right;">350</td>
+<td style="text-align: right;"><strong>0.990</strong></td>
+<td style="text-align: right;"><strong>0.990</strong></td>
+<td style="text-align: right;"><strong>0.989</strong></td>
+<td style="text-align: right;"><strong>0.7250</strong></td>
+</tr>
+</tbody>
+</table>
+<p><img alt="Common-test comparison" src="screenshots/04_common_test_comparison.png" /></p>
+<p>ผลแสดงว่าประสิทธิภาพเพิ่มขึ้นตามจำนวนข้อมูล โดยช่วงที่เพิ่มจาก 60 เป็น 150 ภาพให้การเปลี่ยนแปลงมากที่สุด
+โมเดลจาก dataset 350 มี common-test mAP50-95 สูงสุดเท่ากับ 0.7250 จึงถูกเลือกเป็น final model</p>
+<h2>6. ผลแยกตามรอบการฝึก</h2>
+<h3>Dataset 30</h3>
+<p><img alt="Dataset 30 TensorBoard dashboard" src="screenshots/per_run/size30_tensorboard_dashboard.png" /></p>
+<h3>Dataset 60</h3>
+<p><img alt="Dataset 60 TensorBoard dashboard" src="screenshots/per_run/size60_tensorboard_dashboard.png" /></p>
+<h3>Dataset 150</h3>
+<p><img alt="Dataset 150 TensorBoard dashboard" src="screenshots/per_run/size150_tensorboard_dashboard.png" /></p>
+<h3>Dataset 350</h3>
+<p><img alt="Dataset 350 TensorBoard dashboard" src="screenshots/per_run/size350_tensorboard_dashboard.png" /></p>
+<p>กราฟ <code>results.png</code> ต้นฉบับของ YOLOv5 สำหรับทั้งสี่ run อยู่ใน <code>screenshots/per_run/</code> เช่นกัน</p>
+<h2>7. ตัวอย่าง inference จาก final model</h2>
+<p>เลือกตัวอย่างจากตำแหน่งต้น กลาง และท้ายของ test split โดยใช้โมเดล size-350 และ confidence threshold 0.25</p>
+<h3>ตัวอย่างต้นลำดับ</h3>
+<p><img alt="First test inference" src="screenshots/05_inference_first.jpg" /></p>
+<p>ตรวจพบ lane 2 บริเวณ, track-line 3 บริเวณ และ sideway 2 บริเวณ ครอบคลุมพื้นที่หลักตาม annotation</p>
+<h3>ตัวอย่างกลางลำดับ</h3>
+<p><img alt="Middle test inference" src="screenshots/06_inference_middle.jpg" /></p>
+<p>ตรวจพบโครงสร้างถนนหลักครบ แต่บริเวณด้านขวาหนึ่งตำแหน่งถูกจัดเป็น track-line ด้วยความมั่นใจต่ำกว่า
+ตัวอย่างต้นและท้าย แสดงถึงความคลาดเคลื่อนที่ยังเหลืออยู่ใน final model</p>
+<h3>ตัวอย่างท้ายลำดับ</h3>
+<p><img alt="Last test inference" src="screenshots/07_inference_last.jpg" /></p>
+<p>ตรวจพบ lane 2 บริเวณ, track-line 3 บริเวณ และ sideway 2 บริเวณ โดยตำแหน่งกรอบสอดคล้องกับตัวอย่างต้นลำดับ</p>
+<p>กรอบหลายกรอบซ้อนกันมากเนื่องจาก annotation ของ dataset กำหนดพื้นที่ขนาดใหญ่ที่ซ้อนทับกัน</p>
+<h2>8. การวิเคราะห์ convergence</h2>
+<p>โมเดล size-350 มีแนวโน้ม converge เนื่องจาก box, objectness, classification และ total losses ลดลงต่อเนื่อง
+ขณะที่ precision, recall และ mAP เพิ่มขึ้นและเริ่มคงที่ในช่วงท้าย ผล validation ที่ดีที่สุดเกิดใน epoch 29
+โดยได้ precision 0.99625, recall 1.0, mAP50 0.995 และ mAP50-95 0.81224</p>
+<p>ผล common test ของ final model ได้ precision 0.990, recall 0.990, mAP50 0.989 และ mAP50-95 0.725
+ร่วมกับผล inference ที่ตรวจจับโครงสร้างหลักได้สม่ำเสมอทั้งต้น กลาง และท้าย test sequence จึงสนับสนุนว่าโมเดล
+เรียนรู้รูปแบบในชุดข้อมูลนี้ได้ดี อย่างไรก็ตาม ภาพทั้งหมดมาจากลำดับเฟรมที่มีความสัมพันธ์กัน จึงยังไม่เพียงพอ
+สำหรับยืนยัน generalization ต่อสถานที่ สภาพอากาศ กล้อง หรือช่วงเวลาใหม่</p>
+<h2>9. สรุป</h2>
+<p>การเพิ่มจำนวนข้อมูลช่วยปรับปรุงผลตรวจจับอย่างชัดเจน ชุด 350 ภาพให้ผลดีที่สุดทั้งบน validation และ common test
+และถูกเลือกเป็น final model งานนี้บันทึก loss components, total loss และ learning rate ระดับ iteration ครบตามเกณฑ์
+พร้อมหลักฐาน TensorBoard, ผลทดสอบ และ inference 3 ภาพ ส่วน weight distribution ไม่ได้จัดทำเนื่องจากเป็นหัวข้อเสริม
+และไม่ได้ถูกกำหนดเป็นข้อบังคับ</p></body></html>
